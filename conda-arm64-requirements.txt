@@ -4,6 +4,3 @@ lightgbm>=3.0
 
 # required for v3io client, see docs/requirments.txt for the contraint
 protobuf>=3.20.3, <4
-
-# see requirements.txt for the contraint
-pyyaml>=5.4.1, <6
