@@ -19,7 +19,6 @@ on:
     branches:
       - '.+-os-system-tests'
 
-
   schedule:
 
     # * is a special character in YAML so you have to quote this string
@@ -133,7 +132,7 @@ jobs:
 
     - uses: manusa/actions-setup-minikube@v2.13.0
       with:
-        minikube version: "v1.32.0"
+        minikube version: "v1.34.0"
         kubernetes version: "v1.31.1"
         driver: docker
         github token: ${{ github.token }}
