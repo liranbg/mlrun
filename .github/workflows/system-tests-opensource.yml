@@ -140,6 +140,16 @@ jobs:
         # but this seems to work
         start args: '--addons=registry --insecure-registry="192.168.49.2:5000"'
 
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ github.event.inputs.debug_enabled == 'true' }}
+      with:
+
+        # run in detach mode to allow the workflow to continue running while session is active
+        # this will wait up to 10 minutes AFTER the entire job is done. Once user connects to the session,
+        # it will wait until the user disconnects before finishing up the job.
+        detached: true
+
     - name: Install MLRun CE helm chart
       run: |
         # TODO: Align the mlrun config env vars with the ones in the prepare.py script to avoid further inconsistencies.
@@ -162,17 +172,6 @@ jobs:
         python automation/system_test/prepare.py env \
           --mlrun-dbpath "http://$(minikube ip):${MLRUN_API_NODE_PORT}" \
           --github-access-token "${{ secrets.SYSTEM_TEST_GITHUB_ACCESS_TOKEN }}"
-
-    # Enable tmate debugging of manually-triggered workflows if the input option was provided
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-      if: ${{ github.event.inputs.debug_enabled == 'true' }}
-      with:
-
-        # run in detach mode to allow the workflow to continue running while session is active
-        # this will wait up to 10 minutes AFTER the entire job is done. Once user connects to the session,
-        # it will wait until the user disconnects before finishing up the job.
-        detached: true
 
     - name: Run system tests
       timeout-minutes: 180
