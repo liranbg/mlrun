@@ -20,6 +20,12 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to upgrade lock files for (leave empty to use current branch)'
+        required: false
+        type: string
+        default: ''
   schedule:
   - cron: "0 4 * * 0"  # At 4 AM UTC on every Sunday
 
@@ -29,15 +35,50 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'mlrun'
     steps:
+
+    # checkout from running branch
     - uses: actions/checkout@v5
+      if: github.event.inputs.pr_number == ''
+
+    # checkout from PR
+    - uses: actions/checkout@v5
+      if: github.event.inputs.pr_number != ''
+      with:
+        fetch-depth: 0
+        ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
+
+    # verify pull request is open
+    - name: Verify PR is open
+      if: github.event.inputs.pr_number != ''
+      run: |
+        PR_STATUS=$(gh pr view "${PR_NUMBER}" --json state --jq '.state')
+        if [ "$PR_STATUS" != "OPEN" ]; then
+          echo "Pull request #${PR_NUMBER} is not open ('${PR_STATUS}'). Exiting."
+          exit 1
+        fi
+      env:
+        PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
 
     - name: Upgrade dependencies in the lock file with uv
       run: make upgrade-mlrun-deps-lock
 
+    - name: Commit and push changes
+      if: github.event.inputs.pr_number != ''
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add **/locked-requirements.txt
+        git commit -m "Upgrade uv lock files for PR #${PR_NUMBER}"
+        git push origin "refs/pull/${PR_NUMBER}/merge"
+      env:
+        PR_NUMBER: ${{ github.event.inputs.pr_number }}
+
     - name: Format PR title
       id: format-title
+      if: github.event.inputs.pr_number == ''
       run: |
         if [ "${{ github.ref_name }}" != "development" ]; then
           echo "title=[Requirements-automated] Upgrade lock files [${{ github.ref_name }}]" >> "$GITHUB_OUTPUT"
@@ -45,6 +86,7 @@ jobs:
           echo "title=[Requirements-automated] Upgrade lock files" >> "$GITHUB_OUTPUT"
         fi
     - uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # 7.0.8
+      if: github.event.inputs.pr_number == ''
       with:
         title: ${{ steps.format-title.outputs.title }}
         body: |
