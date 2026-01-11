@@ -58,7 +58,7 @@ def test_create_server_side_launcher(is_remote, local, expectation):
 
 
 def test_enrich_runtime_with_auth_info(
-    monkeypatch, k8s_secrets_mock, client: TestClient
+    monkeypatch, k8s_secrets_mock, client: TestClient, db: sqlalchemy.orm.Session
 ):
     project = "some-project"
     mlrun.mlconf.httpdb.authentication.mode = AuthenticationMode.IGUAZIO

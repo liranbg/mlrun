@@ -263,8 +263,6 @@ def mlrun_op(
     returns = returns or []
     secrets = secrets or []
 
-    mlrun.runtimes.utils.enrich_run_labels(labels)
-
     if name:
         cmd += ["--name", name]
     if func_url:

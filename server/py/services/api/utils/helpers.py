@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import enum
 import typing
 
 import semver
@@ -98,3 +99,37 @@ def resolve_auth_token_secret_name(
             username=username, token_name=token_name
         )
         return secret.metadata.name if secret else None
+
+
+def enrich_run_labels(
+    labels: dict,
+    owner: str,
+    labels_to_enrich: typing.Optional[
+        list[mlrun.common.constants.MLRunInternalLabels]
+    ] = None,
+):
+    """
+    Enrich the run labels with the internal labels and the labels enrichment extension.
+    :param labels: The run labels dict
+    :param labels_to_enrich: The label keys to enrich from MLRunInternalLabels.default_run_labels_to_enrich
+    :param owner: Optional owner to enrich the labels with, if not provided will try to resolve it.
+    :return: The enriched labels dict
+    """
+    # Merge the labels with the labels enrichment extension
+    labels_enrichment = {
+        mlrun.common.constants.MLRunInternalLabels.owner: owner,
+    }
+    # Resolve which label keys to enrich
+    if labels_to_enrich is None:
+        labels_to_enrich = (
+            mlrun.common.constants.MLRunInternalLabels.default_run_labels_to_enrich()
+        )
+
+    # Enrich labels
+    for label in labels_to_enrich:
+        if isinstance(label, enum.Enum):
+            label = label.value
+        enrichment = labels_enrichment.get(label)
+        if label not in labels and enrichment:
+            labels[label] = enrichment
+    return labels

@@ -24,6 +24,7 @@ import mlrun.common.runtimes
 import mlrun.common.schemas
 import mlrun.config as mlrun_config
 import mlrun.model as mlrun_model
+import mlrun.runtimes.utils
 import mlrun.utils as mlrun_utils
 import mlrun.utils.singleton
 import mlrun_pipelines.common.models
@@ -34,6 +35,7 @@ import framework.utils.notifications
 import framework.utils.notifications.notification_pusher
 import framework.utils.singletons.db
 import services.api.crud
+import services.api.utils.helpers
 import services.api.utils.singletons.scheduler
 
 
@@ -110,8 +112,7 @@ class BaseRunner(metaclass=mlrun.utils.singleton.Singleton):
         self._enrich_run_labels_and_env(
             labels=labels,
             runner=runner,
-            auth_username=auth_info.username,
-            original_runner_owner=original_runner_owner,
+            owner=original_runner_owner or (auth_info.username if auth_info else None),
         )
 
         run_object = self._prepare_run_object(
@@ -241,12 +242,11 @@ class BaseRunner(metaclass=mlrun.utils.singleton.Singleton):
             run_object = run_object.set_label(key, value)
         return run_object
 
-    @staticmethod
     def _enrich_run_labels_and_env(
+        self,
         labels: dict,
         runner: mlrun.run.KubejobRuntime,
-        auth_username: Optional[str] = None,
-        original_runner_owner: Optional[str] = None,
+        owner: Optional[str] = None,
     ):
         """
         Enriches the run labels and environment variables for the workflow runner.
@@ -255,19 +255,16 @@ class BaseRunner(metaclass=mlrun.utils.singleton.Singleton):
 
         :param labels: Dictionary of labels to enrich.
         :param runner: Workflow runner function object.
-        :param auth_username: Username from authentication info.
-        :param original_runner_owner: Owner of the original workflow runner.
+        :param owner: Owner of the run.
         """
-        owner_to_enrich = (
-            original_runner_owner if original_runner_owner else auth_username
-        )
-        mlrun.runtimes.utils.enrich_run_labels(
-            labels, [mlrun_constants.MLRunInternalLabels.owner], owner_to_enrich
+        services.api.utils.helpers.enrich_run_labels(
+            labels=labels,
+            owner=owner,
+            labels_to_enrich=[mlrun_constants.MLRunInternalLabels.owner],
         )
         client_python_version = runner.metadata.labels.get(
             mlrun_constants.MLRunInternalLabels.client_python_version
         )
-        # TODO: Remove this when KFP 1 support is removed
         if client_python_version:
             runner.set_env("MLRUN_PYTHON_VERSION", client_python_version)
             labels[mlrun_constants.MLRunInternalLabels.client_python_version] = (
@@ -415,7 +412,7 @@ class WorkflowRunners(BaseRunner, metaclass=mlrun.utils.singleton.Singleton):
             mlrun_constants.MLRunInternalLabels.job_type: mlrun_constants.JOB_TYPE_WORKFLOW_RUNNER,
             mlrun_constants.MLRunInternalLabels.workflow: workflow_request.spec.name,
         }
-        self._enrich_run_labels_and_env(labels, runner, auth_info.username)
+        self._enrich_run_labels_and_env(labels, runner, owner=auth_info.username)
 
         # Generate unique UID
         meta_uid = uuid.uuid4().hex

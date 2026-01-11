@@ -44,6 +44,7 @@ import framework.utils.helpers
 import framework.utils.singletons.db
 import services.api.crud
 import services.api.runtime_handlers
+import services.api.utils.helpers
 
 # Configmap objects on Kubernetes have 10Mb size limit
 SERVING_SPEC_MAX_LENGTH = 10485760
@@ -268,6 +269,25 @@ class ServerSideLauncher(launcher.BaseLauncher):
                     serving_spec_volume["volumeMount"]
                 ]
 
+    def enrich_and_validate_auth_token_name(
+        self, object: Union[mlrun.run.RunObject, mlrun.runtimes.RemoteRuntime]
+    ):
+        if object.spec.auth is None:
+            object.spec.auth = {}
+
+        # Get the provided token name, if any
+        provided_token_name = object.spec.auth.get("token_name")
+
+        # In ML-11600, we will implement a proper resolution logic that checks all secret tokens
+        # of the user and finds a valid one if no token name is provided
+        # If token name not provided, use default
+        token_name = (
+            provided_token_name
+            or mlrun.common.constants.MLRUN_RUNTIME_AUTH_DEFAULT_TOKEN_NAME
+        )
+
+        object.spec.auth["token_name"] = token_name
+
     def _enrich_run(
         self,
         runtime: "mlrun.runtimes.base.BaseRuntime",
@@ -311,6 +331,16 @@ class ServerSideLauncher(launcher.BaseLauncher):
         self._handle_retry(run)
         run = self._pre_run_image_pull_secret_enrichment(run)
         self.enrich_and_validate_auth_token_name(run)
+
+        # resolve ownership from current user or from run labels
+        # if not found, set to "unknown"
+        self._enrich_run_labels(run)
+        if run.spec.output_path:
+            run.spec.output_path = run.spec.output_path.replace(
+                "{{run.user}}",
+                run.metadata.labels[mlrun_constants.MLRunInternalLabels.owner],
+            )
+
         return self._pre_run_scheduling_constraints_enrichment(runtime, run)
 
     @staticmethod
@@ -675,24 +705,19 @@ class ServerSideLauncher(launcher.BaseLauncher):
                     f"must be less than {staleness_threshold_seconds} seconds, got {max_delay} seconds"
                 )
 
-    def enrich_and_validate_auth_token_name(
-        self, object: Union[mlrun.run.RunObject, mlrun.runtimes.RemoteRuntime]
-    ):
-        if object.spec.auth is None:
-            object.spec.auth = {}
+    def _enrich_run_labels(self, run: mlrun.run.RunObject):
+        owner = self._auth_info.username if self._auth_info else None
+        if not owner:
+            owner = run.metadata.labels.get(mlrun_constants.MLRunInternalLabels.owner)
+        if not owner:
+            owner = "unknown"
 
-        # Get the provided token name, if any
-        provided_token_name = object.spec.auth.get("token_name")
-
-        # In ML-11600, we will implement a proper resolution logic that checks all secret tokens
-        # of the user and finds a valid one if no token name is provided
-        # If token name not provided, use default
-        token_name = (
-            provided_token_name
-            or mlrun.common.constants.MLRUN_RUNTIME_AUTH_DEFAULT_TOKEN_NAME
+        services.api.utils.helpers.enrich_run_labels(
+            run.metadata.labels,
+            owner,
+            labels_to_enrich=[mlrun_constants.MLRunInternalLabels.owner],
         )
-
-        object.spec.auth["token_name"] = token_name
+        return run
 
 
 # Once this file is imported it will set the container server side launcher

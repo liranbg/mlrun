@@ -32,6 +32,7 @@ import mlrun.common.schemas.model_monitoring.constants as mm_constants
 import mlrun.errors
 import mlrun.launcher.factory
 import mlrun.runtimes
+import mlrun.runtimes.utils
 import mlrun.utils.helpers
 import mlrun.utils.notifications
 import mlrun.utils.regex
@@ -524,14 +525,6 @@ class BaseRuntime(ModelObj):
 
     def _store_function(self, runspec, meta, db):
         meta.labels["kind"] = self.kind
-        mlrun.runtimes.utils.enrich_run_labels(
-            meta.labels, [mlrun_constants.MLRunInternalLabels.owner]
-        )
-        if runspec.spec.output_path:
-            runspec.spec.output_path = runspec.spec.output_path.replace(
-                "{{run.user}}", meta.labels[mlrun_constants.MLRunInternalLabels.owner]
-            )
-
         if db and self.kind != "handler":
             struct = self.to_dict()
             hash_key = db.store_function(

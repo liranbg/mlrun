@@ -11,9 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import deepdiff
 import pytest
 
+import mlrun.common.constants
+
 import framework.utils.helpers
+import services.api.utils.helpers
 
 
 @pytest.mark.parametrize(
@@ -61,3 +65,88 @@ def test_extract_image_tag(image_reference, expected_tag, expected_has_py_packag
     tag, has_py_package = framework.utils.helpers.extract_image_tag(image_reference)
     assert tag == expected_tag
     assert has_py_package == expected_has_py_package
+
+
+@pytest.mark.parametrize(
+    "labels, labels_to_enrich, owner, expected_labels",
+    [
+        (
+            {},
+            None,
+            "username",
+            {mlrun.common.constants.MLRunInternalLabels.owner: "username"},
+        ),
+        (
+            {},
+            None,
+            None,
+            {},
+        ),
+        (
+            {},
+            [],
+            "username",
+            {},
+        ),
+        (
+            {mlrun.common.constants.MLRunInternalLabels.owner: "Mahatma"},
+            None,
+            "Gandhi",
+            {
+                mlrun.common.constants.MLRunInternalLabels.owner: "Mahatma",
+            },
+        ),
+        (
+            {
+                mlrun.common.constants.MLRunInternalLabels.owner: "Mahatma",
+                mlrun.common.constants.MLRunInternalLabels.v3io_user: "Gandhi",
+            },
+            {},
+            "ignored",
+            {
+                mlrun.common.constants.MLRunInternalLabels.owner: "Mahatma",
+                mlrun.common.constants.MLRunInternalLabels.v3io_user: "Gandhi",
+            },
+        ),
+        (
+            {"a": "A", "b": "B"},
+            {mlrun.common.constants.MLRunInternalLabels.owner},
+            "username",
+            {
+                "a": "A",
+                "b": "B",
+                mlrun.common.constants.MLRunInternalLabels.owner: "username",
+            },
+        ),
+        (
+            {},
+            None,
+            "owner_user",
+            {
+                mlrun.common.constants.MLRunInternalLabels.owner: "owner_user",
+            },
+        ),
+        (
+            {},
+            {mlrun.common.constants.MLRunInternalLabels.owner},
+            "test_user_b",
+            {
+                mlrun.common.constants.MLRunInternalLabels.owner: "test_user_b",
+            },
+        ),
+    ],
+)
+def test_enrich_run_labels(labels, labels_to_enrich, owner, expected_labels):
+    enriched_labels = services.api.utils.helpers.enrich_run_labels(
+        labels=labels,
+        labels_to_enrich=labels_to_enrich,
+        owner=owner,
+    )
+    assert (
+        deepdiff.DeepDiff(
+            enriched_labels,
+            expected_labels,
+            ignore_order=True,
+        )
+        == {}
+    )

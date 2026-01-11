@@ -22,6 +22,7 @@ import mlrun.launcher.base as launcher
 import mlrun.lists
 import mlrun.model
 import mlrun.runtimes
+import mlrun.runtimes.utils
 import mlrun.utils
 import mlrun.utils.version
 
@@ -75,14 +76,6 @@ class ClientBaseLauncher(launcher.BaseLauncher, abc.ABC):
         runtime: "mlrun.runtimes.BaseRuntime", run: "mlrun.run.RunObject"
     ):
         run.metadata.labels[mlrun_constants.MLRunInternalLabels.kind] = runtime.kind
-        mlrun.runtimes.utils.enrich_run_labels(
-            run.metadata.labels, [mlrun_constants.MLRunInternalLabels.owner]
-        )
-        if run.spec.output_path:
-            run.spec.output_path = run.spec.output_path.replace(
-                "{{run.user}}",
-                run.metadata.labels[mlrun_constants.MLRunInternalLabels.owner],
-            )
         db = runtime._get_db()
         if db and runtime.kind != "handler":
             struct = runtime.to_dict()

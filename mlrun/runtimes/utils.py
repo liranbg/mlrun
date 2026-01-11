@@ -11,15 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import enum
-import getpass
 import hashlib
 import json
 import os
 import re
 from io import StringIO
 from sys import stderr
-from typing import Optional
 
 import pandas as pd
 
@@ -446,61 +443,6 @@ def enrich_function_from_dict(function, function_dict):
             else:
                 setattr(function.spec, attribute, override_value)
     return function
-
-
-def resolve_owner(
-    labels: dict,
-    owner_to_enrich: Optional[str] = None,
-):
-    """
-    Resolve the owner label value
-    :param labels: The run labels dict
-    :param auth_username: The authenticated username
-    :return: The resolved owner label value
-    """
-
-    if owner_to_enrich and (
-        labels.get("job-type") == mlrun.common.constants.JOB_TYPE_WORKFLOW_RUNNER
-        or labels.get("job-type")
-        == mlrun.common.constants.JOB_TYPE_RERUN_WORKFLOW_RUNNER
-    ):
-        return owner_to_enrich
-    else:
-        return os.environ.get("V3IO_USERNAME") or getpass.getuser()
-
-
-def enrich_run_labels(
-    labels: dict,
-    labels_to_enrich: Optional[list[mlrun_constants.MLRunInternalLabels]] = None,
-    owner_to_enrich: Optional[str] = None,
-):
-    """
-    Enrich the run labels with the internal labels and the labels enrichment extension.
-    :param labels: The run labels dict
-    :param labels_to_enrich: The label keys to enrich from MLRunInternalLabels.default_run_labels_to_enrich
-    :param owner_to_enrich: Optional owner to enrich the labels with, if not provided will try to resolve it.
-    :return: The enriched labels dict
-    """
-    # Merge the labels with the labels enrichment extension
-    labels_enrichment = {
-        mlrun_constants.MLRunInternalLabels.owner: resolve_owner(
-            labels, owner_to_enrich
-        ),
-    }
-    # Resolve which label keys to enrich
-    if labels_to_enrich is None:
-        labels_to_enrich = (
-            mlrun_constants.MLRunInternalLabels.default_run_labels_to_enrich()
-        )
-
-    # Enrich labels
-    for label in labels_to_enrich:
-        if isinstance(label, enum.Enum):
-            label = label.value
-        enrichment = labels_enrichment.get(label)
-        if label not in labels and enrichment:
-            labels[label] = enrichment
-    return labels
 
 
 def resolve_node_selectors(
