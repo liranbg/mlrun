@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import pathlib
+import re
 import typing
 
 import alembic.config
 import pytest
 import pytest_alembic.plugin.fixtures
-import sqlalchemy.orm
+import sqlalchemy.engine
 from pytest_alembic import MigrationContext
 from pytest_alembic.tests import (  # noqa
     test_model_definitions_match_ddl,
@@ -38,12 +38,7 @@ class Constants:
     ini_file_path = str(
         pathlib.Path(__file__).absolute().parent.parent.parent.parent / "alembic.ini"
     )
-    notifications_table = "runs_notifications"
-
-    notifications_params_to_secret_params_revision = "eefc169f7633"
-    notifications_params_to_secret_params_project = (
-        "notifications_params_to_secret_params_project"
-    )
+    baseline_revision = "c0e342d73bd0"
 
 
 @pytest.fixture
@@ -62,69 +57,32 @@ def alembic_runner(
         yield runner
 
 
-@pytest.fixture
-def before_revision_data() -> dict[str, list[dict[str, str]]]:
-    return {
-        Constants.notifications_params_to_secret_params_revision: [
-            {
-                "__tablename__": Constants.notifications_table,
-                "project": Constants.notifications_params_to_secret_params_project,
-                "name": "notifications1",
-                "kind": "console",
-                "message": "test",
-                "severity": "info",
-                "when": "completed",
-                "params": json.dumps({"obj": {"x": 99}}),
-                "condition": "",
-                "status": "",
-            }
-        ],
-    }
-
-
-@pytest.fixture
-def notifications_test_alembic_runner(
-    db_engine: sqlalchemy.engine.Engine,
-    before_revision_data: dict[str, list[dict[str, str]]],
-) -> typing.Generator[MigrationContext, None, None]:
-    config = pytest_alembic.plugin.fixtures.Config(
-        alembic_config=alembic.config.Config(
-            file_=Constants.ini_file_path,
-        ),
-        before_revision_data=before_revision_data,
-    )
-    with pytest_alembic.runner(
-        config=config,
-        engine=db_engine,
-    ) as runner:
-        yield runner
-
-
 @pytest.mark.alembic
-def test_notification_params_to_secret_params(
-    alembic_session: sqlalchemy.orm.Session,
-    notifications_test_alembic_runner: MigrationContext,
-    before_revision_data: dict[str, list[dict[str, str]]],
-):
-    notifications_test_alembic_runner.migrate_up_to(
-        Constants.notifications_params_to_secret_params_revision
-    )
-    from framework.db.sqldb.models import Run
+def test_baseline_revision_is_new_root():
+    """
+    We only support schema upgrades from MLRun >= 1.6.0.
+    Therefore, the Alembic migration graph is squashed so that the v1.6.0 head revision is the new base.
+    """
 
-    for index, item in enumerate(
-        alembic_session.query(
-            Run.Notification.params,
-            Run.Notification.secret_params,
+    migrations_dir = pathlib.Path(__file__).absolute().parent.parent.parent
+    versions_dir = migrations_dir / "versions"
+
+    root_revisions: list[str] = []
+    for path in versions_dir.glob("*.py"):
+        content = path.read_text(encoding="utf-8")
+        revision_match = re.search(
+            r"^revision\s*=\s*['\"]([^'\"]+)['\"]\s*$",
+            content,
+            re.MULTILINE,
         )
-        .filter_by(
-            project=Constants.notifications_params_to_secret_params_project,
+        down_revision_match = re.search(
+            r"^down_revision\s*=\s*(None|['\"]([^'\"]+)['\"])\s*$",
+            content,
+            re.MULTILINE,
         )
-        .order_by(Run.Notification.id)
-    ):
-        assert not item.params
-        assert (
-            item.secret_params
-            == before_revision_data[
-                Constants.notifications_params_to_secret_params_revision
-            ][index]["params"]
-        )
+        if not revision_match or not down_revision_match:
+            continue
+        if down_revision_match.group(1) == "None":
+            root_revisions.append(revision_match.group(1))
+
+    assert sorted(root_revisions) == [Constants.baseline_revision]
