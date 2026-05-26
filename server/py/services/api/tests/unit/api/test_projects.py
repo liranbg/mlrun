@@ -2576,3 +2576,129 @@ def _create_project(client: TestClient, name: str):
     assert response.status_code == HTTPStatus.CREATED.value
     _assert_project_response(project, response)
     return project
+
+
+# IG4-2615 / ML-12639 — background-task auth escalation
+class TestDeleteProjectBackgroundTaskAuthEscalation:
+    """The project-deletion background task must run downstream calls under the
+    mlrun service account in iguazio v4 mode so they survive user JWT expiry,
+    but must NOT touch auth_info in v3 mode (the leader-skip path relies on
+    the user's session being intact).
+    """
+
+    @staticmethod
+    def _make_user_auth_info() -> mlrun.common.schemas.AuthInfo:
+        return mlrun.common.schemas.AuthInfo(
+            request_headers={"Authorization": "Bearer user-jwt"},
+            username="alice",
+            user_id="user-123",
+            session="user-session",
+            token="user-jwt",
+            kind=mlrun.common.schemas.AuthInfoKind.user,
+        )
+
+    @staticmethod
+    def _make_project() -> mlrun.common.schemas.Project:
+        return mlrun.common.schemas.Project(
+            metadata=mlrun.common.schemas.ProjectMetadata(name="proj-x"),
+            spec=mlrun.common.schemas.ProjectSpec(),
+            status=mlrun.common.schemas.ProjectStatus(
+                state=mlrun.common.schemas.ProjectState.online
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_v4_mode_pivots_auth_info_to_service_account(self, monkeypatch):
+        monkeypatch.setattr(
+            mlrun.mlconf.httpdb.authentication,
+            "mode",
+            mlrun.common.types.AuthenticationMode.IGUAZIO_V4,
+        )
+        # Stub out the SA token client so it doesn't try to read a real token file.
+        sa_headers = {
+            mlrun.common.schemas.HeaderNames.igz_authenticator_kind: "sa",
+            "Authorization": "Bearer sa-token",
+        }
+        monkeypatch.setattr(
+            "framework.utils.clients.service_account_token.Client.auth_headers",
+            property(lambda self: sa_headers),
+        )
+
+        seen = {}
+
+        def fake_delete_project(
+            db_session, project_name, deletion_strategy, auth_info, **kwargs
+        ):
+            seen["auth_info"] = auth_info
+
+        member = Mock()
+        member.delete_project = Mock(side_effect=fake_delete_project)
+        member.post_delete_project = AsyncMock()
+        monkeypatch.setattr(
+            "framework.utils.singletons.project_member.get_project_member",
+            lambda: member,
+        )
+
+        await framework.api.utils._delete_project(
+            db_session=Mock(),
+            project=self._make_project(),
+            deletion_strategy=mlrun.common.schemas.DeletionStrategy.cascading,
+            auth_info=self._make_user_auth_info(),
+            wait_for_project_deletion=False,
+            background_task_name="bt-1",
+        )
+
+        downstream_auth = seen["auth_info"]
+        assert downstream_auth.kind == mlrun.common.schemas.AuthInfoKind.service_account
+        # User-bearing creds must be stripped
+        assert downstream_auth.token is None
+        assert downstream_auth.session is None
+        # Audit identity preserved
+        assert downstream_auth.username == "alice"
+        assert downstream_auth.user_id == "user-123"
+        # SA bearer carried in headers
+        assert downstream_auth.request_headers["Authorization"] == "Bearer sa-token"
+        assert (
+            downstream_auth.request_headers[
+                mlrun.common.schemas.HeaderNames.igz_authenticator_kind
+            ]
+            == "sa"
+        )
+
+    @pytest.mark.asyncio
+    async def test_v3_mode_passes_user_auth_info_unchanged(self, monkeypatch):
+        monkeypatch.setattr(
+            mlrun.mlconf.httpdb.authentication,
+            "mode",
+            mlrun.common.types.AuthenticationMode.IGUAZIO,
+        )
+
+        seen = {}
+
+        def fake_delete_project(
+            db_session, project_name, deletion_strategy, auth_info, **kwargs
+        ):
+            seen["auth_info"] = auth_info
+
+        member = Mock()
+        member.delete_project = Mock(side_effect=fake_delete_project)
+        member.post_delete_project = AsyncMock()
+        monkeypatch.setattr(
+            "framework.utils.singletons.project_member.get_project_member",
+            lambda: member,
+        )
+
+        user_auth = self._make_user_auth_info()
+        await framework.api.utils._delete_project(
+            db_session=Mock(),
+            project=self._make_project(),
+            deletion_strategy=mlrun.common.schemas.DeletionStrategy.cascading,
+            auth_info=user_auth,
+            wait_for_project_deletion=False,
+            background_task_name="bt-1",
+        )
+
+        # v3 path: auth_info must be passed through untouched
+        assert seen["auth_info"] is user_auth
+        assert seen["auth_info"].kind == mlrun.common.schemas.AuthInfoKind.user
+        assert seen["auth_info"].session == "user-session"

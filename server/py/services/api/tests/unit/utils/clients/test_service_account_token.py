@@ -127,3 +127,79 @@ def test_singleton_behavior(patch_config, patch_is_token_expired):
     client1 = service_account_token.Client()
     client2 = service_account_token.Client()
     assert client1 is client2
+
+
+def test_build_sa_auth_info_preserves_user_identity(
+    patch_config, patch_is_token_expired
+):
+    """IG4-2615: build_sa_auth_info swaps creds to SA but keeps audit identity."""
+    patch_is_token_expired.return_value = False
+    client = service_account_token.Client()
+    original = mlrun.common.schemas.AuthInfo(
+        request_headers={"foo": "bar", "Authorization": "Bearer user-jwt"},
+        username="alice",
+        user_id="user-123",
+        user_group_ids=["grp-a", "grp-b"],
+        token="user-jwt",
+        session="user-session-cookie",
+        data_session="user-data-session",
+        access_key="user-access-key",
+        password="user-password",
+        projects_role=mlrun.common.schemas.ProjectsRole.mlrun,
+        planes=["control"],
+        kind=mlrun.common.schemas.AuthInfoKind.user,
+    )
+
+    sa_auth_info = client.build_sa_auth_info(original)
+
+    # Audit identity is preserved
+    assert sa_auth_info.username == "alice"
+    assert sa_auth_info.user_id == "user-123"
+    assert sa_auth_info.user_group_ids == ["grp-a", "grp-b"]
+    assert sa_auth_info.projects_role == mlrun.common.schemas.ProjectsRole.mlrun
+    assert sa_auth_info.planes == ["control"]
+
+    # Kind flips to service_account
+    assert sa_auth_info.kind == mlrun.common.schemas.AuthInfoKind.service_account
+    assert sa_auth_info.is_service_account()
+
+    # User-bearing secrets are explicitly cleared
+    assert sa_auth_info.token is None
+    assert sa_auth_info.session is None
+    assert sa_auth_info.data_session is None
+    assert sa_auth_info.access_key is None
+    assert sa_auth_info.password is None
+
+    # Headers carry SA bearer + sa authenticator kind, original headers preserved
+    assert sa_auth_info.request_headers["foo"] == "bar"
+    assert (
+        sa_auth_info.request_headers[
+            mlrun.common.schemas.HeaderNames.igz_authenticator_kind
+        ]
+        == "sa"
+    )
+    assert sa_auth_info.request_headers["Authorization"] == f"Bearer {TEST_TOKEN}"
+
+    # Original AuthInfo is not mutated
+    assert original.kind == mlrun.common.schemas.AuthInfoKind.user
+    assert original.token == "user-jwt"
+    assert original.request_headers["Authorization"] == "Bearer user-jwt"
+
+
+def test_build_sa_auth_info_handles_empty_headers(patch_config, patch_is_token_expired):
+    """build_sa_auth_info must tolerate AuthInfo with None request_headers."""
+    patch_is_token_expired.return_value = False
+    client = service_account_token.Client()
+    original = mlrun.common.schemas.AuthInfo(username="bob", request_headers=None)
+
+    sa_auth_info = client.build_sa_auth_info(original)
+
+    assert sa_auth_info.username == "bob"
+    assert sa_auth_info.kind == mlrun.common.schemas.AuthInfoKind.service_account
+    assert (
+        sa_auth_info.request_headers[
+            mlrun.common.schemas.HeaderNames.igz_authenticator_kind
+        ]
+        == "sa"
+    )
+    assert sa_auth_info.request_headers["Authorization"] == f"Bearer {TEST_TOKEN}"

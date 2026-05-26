@@ -55,6 +55,39 @@ class Client(
         combined_headers.update(auth_headers)
         return combined_headers
 
+    def build_sa_auth_info(
+        self, original: mlrun.common.schemas.AuthInfo
+    ) -> mlrun.common.schemas.AuthInfo:
+        """
+        Return an ``AuthInfo`` that authenticates as the mlrun service account
+        but keeps the originating user's identity for audit purposes.
+
+        Used by background tasks (e.g. project deletion) where the originating
+        user's JWT can expire mid-flight: substituting SA credentials makes
+        the task self-sufficient while still recording who initiated it.
+
+        :param original: The originating user's ``AuthInfo``.
+        :return: A new ``AuthInfo`` with SA credentials and the original
+            user's username / user_id / group ids preserved.
+        """
+        sa_headers = self.escalate_request_headers(original.request_headers or {})
+        # User-bearing credentials are explicitly cleared so downstream code that
+        # falls back to e.g. auth_info.session cannot accidentally re-use them.
+        return mlrun.common.schemas.AuthInfo(
+            request_headers=sa_headers,
+            username=original.username,
+            user_id=original.user_id,
+            user_group_ids=list(original.user_group_ids),
+            projects_role=original.projects_role,
+            planes=list(original.planes),
+            kind=mlrun.common.schemas.AuthInfoKind.service_account,
+            token=None,
+            session=None,
+            data_session=None,
+            access_key=None,
+            password=None,
+        )
+
     @property
     def auth_headers(self) -> dict[str, str]:
         """

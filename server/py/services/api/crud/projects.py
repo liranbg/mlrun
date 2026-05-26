@@ -35,7 +35,6 @@ import framework.utils.auth.verifier
 import framework.utils.background_tasks
 import framework.utils.clients.messaging
 import framework.utils.clients.nuclio
-import framework.utils.clients.service_account_token as service_account_token
 import framework.utils.projects.remotes.follower as project_follower
 import framework.utils.singletons.db
 import services.alerts.crud
@@ -51,10 +50,6 @@ class Projects(
     project_follower.Member,
     metaclass=mlrun.utils.singleton.AbstractSingleton,
 ):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._service_account_token_client = service_account_token.Client()
-
     def create_project(
         self,
         session: sqlalchemy.orm.Session,
@@ -251,21 +246,13 @@ class Projects(
         if mlrun.mlconf.services.hydra.services == "*":
             services.alerts.crud.Alerts().delete_alerts(session=session, project=name)
         else:
+            # IG4-2615: auth_info carries SA credentials when invoked from the deletion
+            # background task (the project's iguazio permission manifest is gone by this
+            # point, so user creds would 403). Per-call escalation is no longer needed.
             messaging_client = framework.utils.clients.messaging.Client()
-            request_headers = auth_info.request_headers
-
-            if mlrun.mlconf.is_iguazio_v4_mode():
-                # In IG4 as the project has already been deleted, it will no longer exist in the permission manifest at
-                # all, so we must escalate the request to have permissions to delete all project resources
-                request_headers = (
-                    self._service_account_token_client.escalate_request_headers(
-                        auth_info.request_headers
-                    )
-                )
-
             messaging_client.delete(
                 path=f"projects/{name}/alerts",
-                headers=request_headers,
+                headers=auth_info.request_headers,
                 raise_on_failure=True,
             )
 

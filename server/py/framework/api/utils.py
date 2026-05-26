@@ -54,6 +54,7 @@ import framework.rundb.sqldb
 import framework.utils.auth.verifier
 import framework.utils.background_tasks
 import framework.utils.clients.iguazio.v3
+import framework.utils.clients.service_account_token
 import framework.utils.helpers
 import framework.utils.notifications
 import framework.utils.singletons.db
@@ -1180,19 +1181,45 @@ async def _delete_project(
 ):
     force_delete = False
     project_name = project.metadata.name
+
+    # IG4-2615 / ML-12639: project deletion can take minutes (KFP, runtime resources,
+    # nuclio polling). In iguazio v4 mode the originating user's JWT may expire
+    # mid-flight, which would leave the project undeletable (orca policies deleted
+    # but mlrun DB row still present). Re-credential the task as the mlrun service
+    # account so downstream calls survive token expiry. The original AuthInfo is
+    # kept for lifecycle-event audit so we still record who initiated the delete.
+    # In v3 mode the leader-skip path handles authorization differently and the
+    # user's session is still required downstream, so leave auth_info untouched.
+    if mlrun.mlconf.is_iguazio_v4_mode():
+        downstream_auth_info = (
+            framework.utils.clients.service_account_token.Client().build_sa_auth_info(
+                auth_info
+            )
+        )
+        logger.info(
+            "Background project-deletion task escalated to service account",
+            project_name=project_name,
+            acting_as_user=auth_info.username,
+            reason="iguazio_v4_background_task",
+        )
+    else:
+        downstream_auth_info = auth_info
+
     try:
         await run_in_threadpool(
             framework.utils.singletons.project_member.get_project_member().delete_project,
             db_session,
             project_name,
             deletion_strategy,
-            auth_info,
+            downstream_auth_info,
             wait_for_completion=True,
             background_task_name=background_task_name,
             model_monitoring_access_key=model_monitoring_access_key,
         )
     except mlrun.errors.MLRunNotFoundError as exc:
-        if framework.utils.helpers.is_request_from_leader(auth_info.projects_role):
+        if framework.utils.helpers.is_request_from_leader(
+            downstream_auth_info.projects_role
+        ):
             raise exc
 
         if project.status.state != mlrun.common.schemas.ProjectState.archived:
@@ -1216,7 +1243,7 @@ async def _delete_project(
             db_session,
             project_name,
             deletion_strategy,
-            auth_info,
+            downstream_auth_info,
             model_monitoring_access_key=model_monitoring_access_key,
         )
 
@@ -1224,7 +1251,7 @@ async def _delete_project(
         await run_in_threadpool(
             verify_project_is_deleted,
             project_name,
-            auth_info,
+            downstream_auth_info,
         )
 
     await framework.utils.singletons.project_member.get_project_member().post_delete_project(
