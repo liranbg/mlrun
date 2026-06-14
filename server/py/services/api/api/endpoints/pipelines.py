@@ -27,8 +27,6 @@ from sqlalchemy.orm import Session
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.formatters
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
-import mlrun.common.schemas.background_task
 import mlrun.config
 import mlrun.errors
 import mlrun.utils
@@ -45,13 +43,15 @@ import framework.utils.background_tasks
 import framework.utils.notifications
 import framework.utils.singletons.k8s
 import framework.utils.singletons.project_member
+import schemas
+import schemas.background_task
 import services.api.crud
 from framework.api.utils import log_and_raise
 
 router = fastapi.APIRouter(prefix="/projects/{project}/pipelines")
 
 
-@router.get("", response_model=mlrun.common.schemas.PipelinesOutput)
+@router.get("", response_model=schemas.PipelinesOutput)
 async def list_pipelines(
     project: str,
     namespace: str | None = None,
@@ -63,7 +63,7 @@ async def list_pipelines(
         mlrun.common.formatters.PipelineFormat.metadata_only, alias="format"
     ),
     page_size: int = fastapi.Query(None, gt=0, le=200),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -101,7 +101,7 @@ async def list_pipelines(
             page_size,
         )
     allowed_runs = await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+        schemas.AuthorizationResourceTypes.pipeline,
         runs,
         lambda run: (
             run["project"],
@@ -114,7 +114,7 @@ async def list_pipelines(
             mlrun.common.formatters.PipelineFormat.format_obj(run, format_)
             for run in allowed_runs
         ]
-    return mlrun.common.schemas.PipelinesOutput(
+    return schemas.PipelinesOutput(
         runs=allowed_runs,
         total_size=total_size or 0,
         next_page_token=next_page_token or None,
@@ -127,7 +127,7 @@ async def create_pipeline(
     request: fastapi.Request,
     experiment_name: str = fastapi.Query("", alias="experiment"),
     run_name: str = fastapi.Query("", alias="run"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -146,7 +146,7 @@ async def retry_pipeline(
     run_id: str,
     project: str,
     namespace: str = fastapi.Query(mlrun.config.config.namespace),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     submit_mode: str = fastapi.Query(
@@ -154,10 +154,10 @@ async def retry_pipeline(
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
     client_version: str | None = fastapi.Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
 ):
-    project: mlrun.common.schemas.ProjectOut = (
+    project: schemas.ProjectOut = (
         await fastapi.concurrency.run_in_threadpool(
             framework.utils.singletons.project_member.get_project_member().get_project,
             db_session=db_session,
@@ -169,10 +169,10 @@ async def retry_pipeline(
     # check permission CREATE pipeline
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            resource_type=schemas.AuthorizationResourceTypes.pipeline,
             project_name=project.metadata.name,
             resource_name=run_id,
-            action=mlrun.common.schemas.AuthorizationAction.create,
+            action=schemas.AuthorizationAction.create,
             auth_info=auth_info,
         )
     )
@@ -233,7 +233,7 @@ async def retry_pipeline(
             ) from exc
 
     try:
-        workflow_response: mlrun.common.schemas.WorkflowResponse = (
+        workflow_response: schemas.WorkflowResponse = (
             await fastapi.concurrency.run_in_threadpool(
                 services.api.crud.Pipelines().rerun_pipeline_via_runner,
                 db_session=db_session,
@@ -266,7 +266,7 @@ async def terminate_pipeline(
     project: str,
     background_tasks: BackgroundTasks,
     namespace: str = fastapi.Query(mlrun.config.config.namespace),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -275,10 +275,10 @@ async def terminate_pipeline(
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            schemas.AuthorizationResourceTypes.pipeline,
             project,
             run_id,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -316,24 +316,24 @@ async def terminate_pipeline(
 
 @router.post(
     "/{run_id}/push-notifications",
-    response_model=mlrun.common.schemas.BackgroundTask,
+    response_model=schemas.BackgroundTask,
 )
 async def push_notifications(
     project: str,
     run_id: str,
     background_tasks: BackgroundTasks,
     db_session: sqlalchemy.orm.Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
-    notifications: list[mlrun.common.schemas.Notification] | None = None,
+    notifications: list[schemas.Notification] | None = None,
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            schemas.AuthorizationResourceTypes.pipeline,
             project,
             run_id,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -365,7 +365,7 @@ async def get_pipeline(
     format_: mlrun.common.formatters.PipelineFormat = fastapi.Query(
         mlrun.common.formatters.PipelineFormat.summary, alias="format"
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -388,10 +388,10 @@ async def get_pipeline(
         await _get_pipeline_without_project(db_session, auth_info, run_id, namespace)
     else:
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            schemas.AuthorizationResourceTypes.pipeline,
             project,
             run_id,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     return pipeline
@@ -399,7 +399,7 @@ async def get_pipeline(
 
 async def _get_pipeline_without_project(
     db_session: sqlalchemy.orm.Session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     run_id: str,
     namespace: str,
 ):
@@ -417,10 +417,10 @@ async def _get_pipeline_without_project(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            schemas.AuthorizationResourceTypes.pipeline,
             run["run"]["project"],
             run["run"]["id"],
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -428,7 +428,7 @@ async def _get_pipeline_without_project(
 
 
 async def _create_pipeline(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     request: fastapi.Request,
     experiment_name: str = "",
     run_name: str = "",
@@ -469,16 +469,16 @@ async def _create_pipeline(
         )
     else:
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.pipeline,
+            schemas.AuthorizationResourceTypes.pipeline,
             project,
             "",
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
 
     arguments = {}
     arguments_data = request.headers.get(
-        mlrun.common.schemas.HeaderNames.pipeline_arguments
+        schemas.HeaderNames.pipeline_arguments
     )
     if arguments_data:
         arguments = ast.literal_eval(arguments_data)
@@ -516,7 +516,7 @@ def _push_notifications(
     db_session: sqlalchemy.orm.Session,
     run_id: str,
     project: str,
-    notifications: list[mlrun.common.schemas.Notification] | None = None,
+    notifications: list[schemas.Notification] | None = None,
 ):
     if not notifications:
         return
@@ -548,16 +548,16 @@ async def _terminate_pipeline(
     background_tasks: BackgroundTasks,
     run_id: str,
     project: str,
-) -> mlrun.common.schemas.BackgroundTask:
+) -> schemas.BackgroundTask:
     background_task_handler = (
         framework.utils.background_tasks.ProjectBackgroundTasksHandler()
     )
     existing_terminate_pipeline_task = await fastapi.concurrency.run_in_threadpool(
         background_task_handler.get_background_task_by_state_and_labels,
         db_session=db_session,
-        status=mlrun.common.schemas.BackgroundTaskState.running,
+        status=schemas.BackgroundTaskState.running,
         labels={
-            mlrun.common.schemas.background_task.BackGroundTaskLabel.pipeline: run_id,
+            schemas.background_task.BackGroundTaskLabel.pipeline: run_id,
         },
     )
 
@@ -582,7 +582,7 @@ async def _terminate_pipeline(
                 time.time(),
             ),
             {
-                mlrun.common.schemas.background_task.BackGroundTaskLabel.pipeline: run_id,
+                schemas.background_task.BackGroundTaskLabel.pipeline: run_id,
             },
             run_id,
             project,

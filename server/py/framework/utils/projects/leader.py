@@ -21,7 +21,6 @@ import humanfriendly
 import sqlalchemy.orm
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.utils
@@ -39,6 +38,7 @@ import framework.utils.projects.member
 import framework.utils.projects.member as project_member
 import framework.utils.projects.remotes.follower
 import framework.utils.projects.remotes.nop_follower
+import schemas
 import services.api.crud
 
 
@@ -76,11 +76,11 @@ class Member(
     def create_project(
         self,
         db_session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         commit_before_get: bool = False,
-    ) -> tuple[mlrun.common.schemas.ProjectOut | None, bool]:
+    ) -> tuple[schemas.ProjectOut | None, bool]:
         self._enrich_and_validate(project, auth_info)
         self._run_on_all_followers(
             True, "create_project", db_session, project, auth_info
@@ -92,10 +92,10 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.ProjectOut | None, bool]:
+    ) -> tuple[schemas.ProjectOut | None, bool]:
         self._enrich_and_validate(project, auth_info)
         self._validate_body_and_path_names_matches(name, project)
         self._run_on_all_followers(
@@ -108,10 +108,10 @@ class Member(
         db_session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.ProjectOut, bool]:
+    ) -> tuple[schemas.ProjectOut, bool]:
         self._enrich_project_patch(project)
         self._validate_body_and_path_names_matches(name, project)
         self._run_on_all_followers(
@@ -123,8 +123,8 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         background_task_name: str | None = None,
         model_monitoring_access_key: str | None = None,
@@ -142,23 +142,23 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         from_leader: bool = False,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
-    ) -> mlrun.common.schemas.ProjectOut:
+    ) -> schemas.ProjectOut:
         return self._leader_follower.get_project(db_session, name, auth_info)
 
     def list_projects(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         return self._leader_follower.list_projects(
             db_session, auth_info, owner, format_, labels, state, names, updated_after
         )
@@ -166,12 +166,12 @@ class Member(
     async def list_project_summaries(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         return await self._leader_follower.list_project_summaries(
             db_session, auth_info, owner, labels, state, names
         )
@@ -180,8 +180,8 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         return await self._leader_follower.get_project_summary(
             db_session, name, auth_info
         )
@@ -190,8 +190,8 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         raise NotImplementedError()
 
     def _start_periodic_sync(self):
@@ -216,8 +216,8 @@ class Member(
         db_session = framework.db.session.create_session()
         try:
             # re-generating all of the maps every time since _ensure_follower_projects_synced might cause changes
-            leader_projects: mlrun.common.schemas.ProjectsOutput
-            follower_projects_map: dict[str, mlrun.common.schemas.ProjectsOutput]
+            leader_projects: schemas.ProjectsOutput
+            follower_projects_map: dict[str, schemas.ProjectsOutput]
             leader_projects, follower_projects_map = self._run_on_all_followers(
                 True, "list_projects", db_session
             )
@@ -268,8 +268,8 @@ class Member(
         leader_project_names: set[str],
         follower_names: set[str],
         project_name: str,
-        followers_projects_map: dict[str, dict[str, mlrun.common.schemas.Project]],
-        leader_projects_map: dict[str, mlrun.common.schemas.Project],
+        followers_projects_map: dict[str, dict[str, schemas.Project]],
+        leader_projects_map: dict[str, schemas.Project],
     ):
         # FIXME: This function only handles syncing project existence, i.e. if a user updates a project attribute
         #  through one of the followers this change won't be synced and the projects will be left with this discrepancy
@@ -330,7 +330,7 @@ class Member(
         db_session: sqlalchemy.orm.Session,
         follower_names: set[str],
         project_name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
     ):
         for follower_name in follower_names:
             logger.debug(
@@ -361,7 +361,7 @@ class Member(
         # the name of the follower which we took the missing project from
         project_follower_name: str,
         project_name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
     ):
         for missing_follower in missing_followers:
             logger.debug(
@@ -387,7 +387,7 @@ class Member(
                 )
 
     def _should_sync_project_to_followers(
-        self, project: mlrun.common.schemas.Project
+        self, project: schemas.Project
     ) -> bool:
         """
         projects name validation is enforced on creation, the only way for a project name to be invalid is if it was
@@ -464,16 +464,16 @@ class Member(
 
     def _enrich_and_validate(
         self,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo | None = None,
     ):
         self._enrich_project(project, auth_info)
         self._validate_project(project)
 
     @staticmethod
     def _enrich_project(
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo | None = None,
     ):
         if auth_info and project.spec.owner is None:
             project.spec.owner = auth_info.username
@@ -500,9 +500,9 @@ class Member(
 
     @staticmethod
     def _validate_body_and_path_names_matches(
-        path_name: str, project: typing.Union[mlrun.common.schemas.Project, dict]
+        path_name: str, project: typing.Union[schemas.Project, dict]
     ):
-        if isinstance(project, mlrun.common.schemas.Project):
+        if isinstance(project, schemas.Project):
             body_name = project.metadata.name
         elif isinstance(project, dict):
             body_name = project.get("metadata", {}).get("name")

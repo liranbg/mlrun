@@ -43,14 +43,14 @@ from sqlalchemy.orm import Mapper, Session, declared_attr, relationship
 
 import mlrun.common
 import mlrun.common.db.dialects
-import mlrun.common.schemas
-import mlrun.common.schemas.partition_interval
 import mlrun.utils
 
 import framework.db
 import framework.db.sqldb.base
 import framework.db.sqldb.partition_bootstrapper
 import framework.db.sqldb.sql_types
+import schemas
+import schemas.partition_interval
 
 Base = declarative_base()
 NULL = None  # Avoid flake8 issuing warnings when comparing in filter
@@ -585,11 +585,11 @@ with warnings.catch_warnings():
             self.struct = pickle.dumps(value)
 
         @property
-        def cron_trigger(self) -> mlrun.common.schemas.ScheduleCronTrigger:
+        def cron_trigger(self) -> schemas.ScheduleCronTrigger:
             return orjson.loads(self.cron_trigger_str)
 
         @cron_trigger.setter
-        def cron_trigger(self, trigger: mlrun.common.schemas.ScheduleCronTrigger):
+        def cron_trigger(self, trigger: schemas.ScheduleCronTrigger):
             self.cron_trigger_str = orjson.dumps(trigger.dict(exclude_unset=True))
 
     class Project(Base, LabelMixin, framework.db.sqldb.base.BaseModel):
@@ -935,7 +935,7 @@ with warnings.catch_warnings():
 
         interval = Column(
             Enum(
-                mlrun.common.schemas.partition_interval.PartitionInterval,
+                schemas.partition_interval.PartitionInterval,
                 name="partition_interval",
                 native_enum=False,
                 create_constraint=True,
@@ -1030,7 +1030,7 @@ with warnings.catch_warnings():
         name = Column(framework.db.sqldb.sql_types.Utf8BinText)
         endpoint_type = Column(Integer, nullable=False)
         mode = Column(
-            Integer, default=mlrun.common.schemas.EndpointMode.REAL_TIME.value
+            Integer, default=schemas.EndpointMode.REAL_TIME.value
         )
         project = Column(framework.db.sqldb.sql_types.Utf8BinText)
         body = Column(framework.db.sqldb.sql_types.Blob)
@@ -1175,7 +1175,7 @@ def bootstrap_partitions(
     connection: Connection,
     **_,
 ) -> None:
-    partition_interval = mlrun.common.schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
+    partition_interval = schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
     dialect = connection.dialect.name
 
     with Session(bind=connection) as session:
@@ -1205,7 +1205,7 @@ def set_alert_activations_partition_interval(
     """This is required for integration tests,as they don't set the partition interval for
     alert_activations via alembic migration.
     """
-    partition_interval = mlrun.common.schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
+    partition_interval = schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
     with Session(bind=connection) as session:
         import framework.db.sqldb.db
 

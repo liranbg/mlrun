@@ -31,7 +31,6 @@ import mlrun.common.constants as mlrun_constants
 import mlrun.common.formatters
 import mlrun.common.helpers
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils
 import mlrun.utils.helpers
@@ -43,15 +42,16 @@ import mlrun_pipelines.imports
 import mlrun_pipelines.mixins
 import mlrun_pipelines.models
 import mlrun_pipelines.utils
-from mlrun.common.schemas import WorkflowResponse
 from mlrun.k8s_utils import sanitize_label_value
 from mlrun_pipelines.models import PipelineRun
 
 import framework.api.utils
 import framework.utils.singletons.db
 import framework.utils.singletons.k8s
+import schemas
 import services.api.crud
 import services.api.utils.helpers
+from schemas import WorkflowResponse
 from services.api.crud.workflows import RerunRunner
 
 
@@ -87,7 +87,7 @@ class Pipelines(
             project=project,
             page_token=next_page_token,
             page_size=page_size
-            or mlrun.common.schemas.PipelinesPagination.default_page_size,
+            or schemas.PipelinesPagination.default_page_size,
             sort_by=sort_by,
             filter_json=filter_json,
         ):
@@ -415,9 +415,9 @@ class Pipelines(
         self,
         db_session: sqlalchemy.orm.Session,
         run_id: str,
-        project: mlrun.common.schemas.ProjectOut,
+        project: schemas.ProjectOut,
         original_runner: mlrun.run.RunObject,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         client_version: str | None = None,
         rerun_index: int | None = None,
     ):
@@ -482,7 +482,7 @@ class Pipelines(
             for n in original_runner_notifications
         ]
 
-        rerun_request = mlrun.common.schemas.RerunWorkflowRequest(
+        rerun_request = schemas.RerunWorkflowRequest(
             run_name=run_name,
             run_id=run_id,
             notifications=rerun_notifications,
@@ -505,7 +505,7 @@ class Pipelines(
         status = mlrun_pipelines.common.models.RunStatuses.running
         runner_uid = run.uid()
 
-        return mlrun.common.schemas.WorkflowResponse(
+        return schemas.WorkflowResponse(
             project=project.metadata.name,
             name=rerun_request.run_name,
             status=str(status),
@@ -612,7 +612,7 @@ class Pipelines(
         content_type: str,
         data: bytes,
         arguments: dict | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
     ):
         if arguments is None:
             arguments = {}

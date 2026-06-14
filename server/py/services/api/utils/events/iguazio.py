@@ -15,10 +15,10 @@
 
 import igz_mgmt.schemas.events
 
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.utils.clients.iguazio.v3
+import schemas
 import services.api.utils.events.base as base_events
 
 PROJECT_AUTH_SECRET_CREATED = "Security.Project.AuthSecret.Created"
@@ -55,7 +55,7 @@ class Client(base_events.BaseEventClient):
         self,
         username: str,
         secret_name: str,
-        action: mlrun.common.schemas.AuthSecretEventActions,
+        action: schemas.AuthSecretEventActions,
     ) -> igz_mgmt.AuditEvent:
         """
         Generate an auth secret event
@@ -65,8 +65,8 @@ class Client(base_events.BaseEventClient):
         :return: event object to emit
         """
         if action in [
-            mlrun.common.schemas.SecretEventActions.created,
-            mlrun.common.schemas.SecretEventActions.updated,
+            schemas.SecretEventActions.created,
+            schemas.SecretEventActions.updated,
         ]:
             return self._generate_auth_secret_event(username, secret_name, action)
         else:
@@ -77,7 +77,7 @@ class Client(base_events.BaseEventClient):
         project: str,
         secret_name: str,
         secret_keys: list[str] | None = None,
-        action: mlrun.common.schemas.SecretEventActions = mlrun.common.schemas.SecretEventActions.created,
+        action: schemas.SecretEventActions = schemas.SecretEventActions.created,
     ) -> igz_mgmt.AuditEvent:
         """
         Generate a project secret event
@@ -87,15 +87,15 @@ class Client(base_events.BaseEventClient):
         :param action:      preformed action
         :return: event object to emit
         """
-        if action == mlrun.common.schemas.SecretEventActions.created:
+        if action == schemas.SecretEventActions.created:
             return self._generate_project_secret_created_event(
                 project, secret_name, secret_keys
             )
-        elif action == mlrun.common.schemas.SecretEventActions.updated:
+        elif action == schemas.SecretEventActions.updated:
             return self._generate_project_secret_updated_event(
                 project, secret_name, secret_keys
             )
-        elif action == mlrun.common.schemas.SecretEventActions.deleted:
+        elif action == schemas.SecretEventActions.deleted:
             return self._generate_project_secret_deleted_event(project, secret_name)
         else:
             raise mlrun.errors.MLRunInvalidArgumentError(f"Unsupported action {action}")

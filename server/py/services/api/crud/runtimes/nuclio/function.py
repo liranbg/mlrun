@@ -25,7 +25,6 @@ import mlrun
 import mlrun.auth.nuclio
 import mlrun.common.constants
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.datastore
 import mlrun.errors
 import mlrun.runtimes.nuclio.function
@@ -37,6 +36,7 @@ from mlrun.utils import logger
 import framework.utils.clients.async_nuclio
 import framework.utils.clients.iguazio.v3
 import framework.utils.singletons.k8s
+import schemas
 import services.api.crud.runtimes.nuclio.helpers
 import services.api.runtime_handlers
 import services.api.utils.builder
@@ -45,7 +45,7 @@ from services.api.crud.runtimes.nuclio.helpers import pure_nuclio_deployed_restr
 
 def deploy_nuclio_function(
     function: mlrun.runtimes.nuclio.function.RemoteRuntime,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
     client_version: str | None = None,
     builder_env: dict | None = None,
     client_python_version: str | None = None,
@@ -129,7 +129,7 @@ def get_nuclio_deploy_status(
     last_log_timestamp=0,
     verbose=False,
     resolve_address=True,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
 ):
     """
     Get nuclio function deploy status
@@ -181,7 +181,7 @@ def get_nuclio_deploy_status(
 
 
 async def delete_nuclio_functions_in_batches(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     project_name: str,
     function_names: list[str],
 ):
@@ -382,7 +382,7 @@ def _apply_escaped_config(config, parent_key, items: dict):
 
 
 def _enrich_config_spec(
-    function, auth_info: mlrun.common.schemas.AuthInfo | None = None
+    function, auth_info: schemas.AuthInfo | None = None
 ):
     # Add secret configurations to function's pod spec, if secret sources were added.
     # Needs to be here, since it adds env params, which are handled in the next lines.
@@ -711,7 +711,7 @@ def _set_function_name(function, config, project, tag):
 def _add_secrets_config_to_function_spec(
     function: mlrun.runtimes.nuclio.function.RemoteRuntime,
     token_name: str,
-    auth_info: mlrun.common.schemas.AuthInfo | None = None,
+    auth_info: schemas.AuthInfo | None = None,
 ):
     handler = services.api.runtime_handlers.BaseRuntimeHandler
     mount_otlp_secret = bool(getattr(function.spec, "mount_otlp_secret", False))

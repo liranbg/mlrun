@@ -17,12 +17,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 import mlrun
-import mlrun.common.schemas
-import mlrun.common.schemas.partition_interval
 
 import framework.db.sqldb.db
 import framework.db.sqldb.partition_bootstrapper
 import framework.utils.singletons.db
+import schemas
+import schemas.partition_interval
 
 
 class DBPartitioner:
@@ -90,7 +90,7 @@ class DBPartitioner:
         session: Session,
         table_name: str,
         partitions_to_create: int,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
     ) -> None:
         """
         Create future partitions for a table, including buffer.
@@ -117,7 +117,7 @@ class DBPartitioner:
 
     def get_partition_interval(
         self, session: Session, table_name: str
-    ) -> mlrun.common.schemas.partition_interval.PartitionInterval:
+    ) -> schemas.partition_interval.PartitionInterval:
         """
         Retrieve the partition interval configured for a table.
 
@@ -131,7 +131,7 @@ class DBPartitioner:
         self,
         session: Session,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         retention_days: int,
     ) -> None:
         """

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-import mlrun.common.schemas
-
+import schemas
 import services.api.utils.events.base as base_events
 
 
@@ -26,7 +25,7 @@ class NopClient(base_events.BaseEventClient):
         self,
         username: str,
         secret_name: str,
-        action: mlrun.common.schemas.AuthSecretEventActions,
+        action: schemas.AuthSecretEventActions,
     ):
         """
         Generate an auth secret event
@@ -42,7 +41,7 @@ class NopClient(base_events.BaseEventClient):
         project: str,
         secret_name: str,
         secret_keys: list[str] | None = None,
-        action: mlrun.common.schemas.SecretEventActions = mlrun.common.schemas.SecretEventActions.created,
+        action: schemas.SecretEventActions = schemas.SecretEventActions.created,
     ):
         """
         Generate a project secret event

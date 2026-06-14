@@ -17,12 +17,12 @@ import typing
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun import mlconf
 
 import framework.db.sqldb.models
 import framework.utils.singletons.db
+import schemas
 
 
 class PaginationCache(metaclass=mlrun.utils.singleton.Singleton):
@@ -71,8 +71,8 @@ class PaginationCache(metaclass=mlrun.utils.singleton.Singleton):
         user: str | None = None,
         function: str | None = None,
         last_accessed_before: datetime.datetime | None = None,
-        order_by: mlrun.common.schemas.OrderType
-        | None = mlrun.common.schemas.OrderType.desc,
+        order_by: schemas.OrderType
+        | None = schemas.OrderType.desc,
     ):
         db = framework.utils.singletons.db.get_db()
         return db.list_paginated_query_cache_record(
@@ -116,7 +116,7 @@ class PaginationCache(metaclass=mlrun.utils.singleton.Singleton):
             oldest_records_subquery = (
                 db.list_paginated_query_cache_record(
                     session,
-                    order_by=mlrun.common.schemas.OrderType.asc,
+                    order_by=schemas.OrderType.asc,
                     as_query=True,
                 )
                 .with_entities(framework.db.sqldb.models.PaginationCache.key)

@@ -16,12 +16,12 @@ import typing
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 
 import framework.db.sqldb.db
 import framework.utils.notifications
 import framework.utils.singletons.db
+import schemas
 import services.api.utils.scheduler
 import services.api.utils.singletons.scheduler
 
@@ -108,11 +108,11 @@ class Notifications(
     @staticmethod
     def set_object_notifications(
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         project: str,
-        notifications: list[mlrun.common.schemas.Notification],
+        notifications: list[schemas.Notification],
         notification_parent: typing.Union[
-            mlrun.common.schemas.RunIdentifier, mlrun.common.schemas.ScheduleIdentifier
+            schemas.RunIdentifier, schemas.ScheduleIdentifier
         ],
     ):
         """

@@ -26,7 +26,6 @@ import fastapi.exception_handlers
 import semver
 from dependency_injector import containers, providers
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils
 import mlrun.utils.version
@@ -40,6 +39,7 @@ import framework.utils.clients.messaging
 import framework.utils.pagination
 import framework.utils.periodic
 import framework.utils.singletons.db
+import schemas
 
 
 class Service(ABC):
@@ -228,9 +228,9 @@ class Service(ABC):
 
         if (
             mlconf.httpdb.clusterization.worker.sync_with_chief.mode
-            == mlrun.common.schemas.WaitForChiefToReachOnlineStateFeatureFlag.enabled
+            == schemas.WaitForChiefToReachOnlineStateFeatureFlag.enabled
             and mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.worker
+            == schemas.ClusterizationRole.worker
         ):
             # in the background, wait for chief to reach online state
             self._start_chief_clusterization_spec_sync_loop()
@@ -241,7 +241,7 @@ class Service(ABC):
 
         # relevant for chief only. workers will not reach this point as they
         # are waiting for chief to reach online state.
-        if mlconf.httpdb.state == mlrun.common.schemas.APIStates.online:
+        if mlconf.httpdb.state == schemas.APIStates.online:
             await self.move_service_to_online()
 
     async def _setup_mounted_service(self):
@@ -269,6 +269,11 @@ class Service(ABC):
         )
         self.app.add_middleware(
             framework.middlewares.RequestLoggerMiddleware, logger=self._logger
+        )
+        # ML-12736: added last => outermost => runs first, normalizing Content-Type before the
+        # request body is parsed, so pydantic-v1 clients (no Content-Type header) keep working.
+        self.app.add_middleware(
+            framework.middlewares.EnsureJSONContentTypeMiddleware
         )
 
     def _add_exception_handlers(self):
@@ -338,7 +343,7 @@ class Service(ABC):
     def _start_chief_clusterization_spec_sync_loop(self):
         # put it here first, because we need to set it before the periodic function starts
         # so the worker will be aligned with the chief state
-        mlconf.httpdb.state = mlrun.common.schemas.APIStates.waiting_for_chief
+        mlconf.httpdb.state = schemas.APIStates.waiting_for_chief
 
         interval = int(mlconf.httpdb.clusterization.worker.sync_with_chief.interval)
         if interval > 0:
@@ -357,7 +362,7 @@ class Service(ABC):
     ):
         # sanity
         # if we are still in the periodic function and the worker has reached the terminal state, then cancel it
-        if mlconf.httpdb.state in mlrun.common.schemas.APIStates.terminal_states():
+        if mlconf.httpdb.state in schemas.APIStates.terminal_states():
             self._logger.debug(
                 "Worker reached terminal state, canceling periodic function",
                 state=mlconf.httpdb.state,
@@ -381,7 +386,7 @@ class Service(ABC):
 
     async def _align_worker_state_with_chief_state(
         self,
-        clusterization_spec: mlrun.common.schemas.ClusterizationSpec,
+        clusterization_spec: schemas.ClusterizationSpec,
     ):
         # if clusterization_spec has different version (take out unstable)
         # deny the response as it may come from an older, stable chief
@@ -411,7 +416,7 @@ class Service(ABC):
             self._logger.warning("Chief did not return any state")
             return
 
-        if chief_state not in mlrun.common.schemas.APIStates.terminal_states():
+        if chief_state not in schemas.APIStates.terminal_states():
             self._logger.debug(
                 "Chief did not reach online state yet, will retry after sync interval",
                 interval=mlconf.httpdb.clusterization.worker.sync_with_chief.interval,
@@ -421,7 +426,7 @@ class Service(ABC):
             mlconf.httpdb.state = chief_state
             return
 
-        if chief_state == mlrun.common.schemas.APIStates.online:
+        if chief_state == schemas.APIStates.online:
             self._logger.info(
                 "Chief reached online state",
                 service_name=self.service_name,

@@ -302,7 +302,7 @@ def compile_nuclio_archive_config(
 
         if v3io_access_key:
             code_entry_attributes["headers"] = {
-                mlrun.common.schemas.HeaderNames.v3io_session_key: v3io_access_key
+                schemas.HeaderNames.v3io_session_key: v3io_access_key
             }
 
     # s3

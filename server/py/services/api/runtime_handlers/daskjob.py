@@ -19,7 +19,6 @@ from kubernetes.client.rest import ApiException
 from sqlalchemy.orm import Session
 
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.k8s_utils
 import mlrun.runtimes
@@ -31,6 +30,7 @@ from mlrun.runtimes.base import RuntimeClassMode
 from mlrun.utils import logger
 
 import framework.utils.singletons.k8s
+import schemas
 import services.api.runtime_handlers
 from framework.db.base import DBInterface
 from services.api.common.runtime_handlers import get_resource_labels
@@ -54,7 +54,7 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
         runtime: mlrun.runtimes.BaseRuntime,
         run: mlrun.run.RunObject,
         execution: mlrun.execution.MLClientCtx,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
     ):
         raise NotImplementedError(
             "Execution of dask jobs is done locally by the dask client"
@@ -95,17 +95,17 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
     def _enrich_list_resources_response(
         self,
         response: Union[
-            mlrun.common.schemas.RuntimeResources,
-            mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-            mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+            schemas.RuntimeResources,
+            schemas.GroupedByJobRuntimeResourcesOutput,
+            schemas.GroupedByProjectRuntimeResourcesOutput,
         ],
         namespace: str,
         label_selector: str | None = None,
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ) -> Union[
-        mlrun.common.schemas.RuntimeResources,
-        mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-        mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+        schemas.RuntimeResources,
+        schemas.GroupedByJobRuntimeResourcesOutput,
+        schemas.GroupedByProjectRuntimeResourcesOutput,
     ]:
         """
         Handling listing service resources
@@ -119,7 +119,7 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
         service_resources = []
         for service in _services.items:
             service_resources.append(
-                mlrun.common.schemas.RuntimeResource(
+                schemas.RuntimeResource(
                     name=service.metadata.name, labels=service.metadata.labels
                 )
             )
@@ -130,12 +130,12 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
     def _build_output_from_runtime_resources(
         self,
         response: Union[
-            mlrun.common.schemas.RuntimeResources,
-            mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-            mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+            schemas.RuntimeResources,
+            schemas.GroupedByJobRuntimeResourcesOutput,
+            schemas.GroupedByProjectRuntimeResourcesOutput,
         ],
-        runtime_resources_list: list[mlrun.common.schemas.RuntimeResources],
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        runtime_resources_list: list[schemas.RuntimeResources],
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ):
         enrich_needed = self._validate_if_enrich_is_needed_by_group_by(group_by)
         if not enrich_needed:
@@ -150,13 +150,13 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
 
     def _validate_if_enrich_is_needed_by_group_by(
         self,
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ) -> bool:
         # Dask runtime resources are per function (and not per job) therefore, when grouping by job we're simply
         # omitting the dask runtime resources
-        if group_by == mlrun.common.schemas.ListRuntimeResourcesGroupByField.job:
+        if group_by == schemas.ListRuntimeResourcesGroupByField.job:
             return False
-        elif group_by == mlrun.common.schemas.ListRuntimeResourcesGroupByField.project:
+        elif group_by == schemas.ListRuntimeResourcesGroupByField.project:
             return True
         elif group_by is not None:
             raise NotImplementedError(
@@ -167,14 +167,14 @@ class DaskRuntimeHandler(BaseRuntimeHandler):
     def _enrich_service_resources_in_response(
         self,
         response: Union[
-            mlrun.common.schemas.RuntimeResources,
-            mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-            mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+            schemas.RuntimeResources,
+            schemas.GroupedByJobRuntimeResourcesOutput,
+            schemas.GroupedByProjectRuntimeResourcesOutput,
         ],
-        service_resources: list[mlrun.common.schemas.RuntimeResource],
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        service_resources: list[schemas.RuntimeResource],
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ):
-        if group_by == mlrun.common.schemas.ListRuntimeResourcesGroupByField.project:
+        if group_by == schemas.ListRuntimeResourcesGroupByField.project:
             for service_resource in service_resources:
                 self._add_resource_to_grouped_by_project_resources_response(
                     response, "service_resources", service_resource

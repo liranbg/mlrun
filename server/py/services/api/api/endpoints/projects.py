@@ -21,7 +21,6 @@ import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.api.deps
@@ -30,6 +29,7 @@ import framework.utils.auth.verifier
 import framework.utils.clients.chief
 import framework.utils.helpers
 import framework.utils.project_formats
+import schemas
 import services.api.crud
 from framework.utils.singletons.project_member import get_project_member
 
@@ -39,17 +39,17 @@ router = fastapi.APIRouter()
 @router.post(
     "/projects",
     responses={
-        http.HTTPStatus.CREATED.value: {"model": mlrun.common.schemas.Project},
+        http.HTTPStatus.CREATED.value: {"model": schemas.Project},
         http.HTTPStatus.ACCEPTED.value: {},
     },
 )
 async def create_project(
-    project: mlrun.common.schemas.Project,
+    project: schemas.Project,
     response: fastapi.Response,
     # TODO: we're in a http request context here, therefore it doesn't make sense that by default it will hold the
     #  request until the process will be completed - after UI supports waiting - change default to False
     wait_for_completion: bool = fastapi.Query(True, alias="wait-for-completion"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -58,8 +58,8 @@ async def create_project(
 ):
     if mlrun.mlconf.is_iguazio_v4_mode():
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.project_global,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationResourceTypes.project_global,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
     project, is_running_in_background = await run_in_threadpool(
@@ -84,17 +84,17 @@ async def create_project(
 @router.put(
     "/projects/{name}",
     responses={
-        http.HTTPStatus.OK.value: {"model": mlrun.common.schemas.Project},
+        http.HTTPStatus.OK.value: {"model": schemas.Project},
         http.HTTPStatus.ACCEPTED.value: {},
     },
 )
 async def store_project(
-    project: mlrun.common.schemas.Project,
+    project: schemas.Project,
     name: str,
     # TODO: we're in a http request context here, therefore it doesn't make sense that by default it will hold the
     #  request until the process will be completed - after UI supports waiting - change default to False
     wait_for_completion: bool = fastapi.Query(True, alias="wait-for-completion"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -124,21 +124,21 @@ async def store_project(
 @router.patch(
     "/projects/{name}",
     responses={
-        http.HTTPStatus.OK.value: {"model": mlrun.common.schemas.Project},
+        http.HTTPStatus.OK.value: {"model": schemas.Project},
         http.HTTPStatus.ACCEPTED.value: {},
     },
 )
 async def patch_project(
     project: dict,
     name: str,
-    patch_mode: mlrun.common.schemas.PatchMode = fastapi.Header(
-        mlrun.common.schemas.PatchMode.replace,
-        alias=mlrun.common.schemas.HeaderNames.patch_mode,
+    patch_mode: schemas.PatchMode = fastapi.Header(
+        schemas.PatchMode.replace,
+        alias=schemas.HeaderNames.patch_mode,
     ),
     # TODO: we're in a http request context here, therefore it doesn't make sense that by default it will hold the
     #  request until the process will be completed - after UI supports waiting - change default to False
     wait_for_completion: bool = fastapi.Query(True, alias="wait-for-completion"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -153,7 +153,7 @@ async def patch_project(
     elif not framework.utils.helpers.is_request_from_leader(auth_info.projects_role):
         await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
             name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     project, is_running_in_background = await run_in_threadpool(
@@ -170,7 +170,7 @@ async def patch_project(
     return project
 
 
-@router.get("/projects/{name}", response_model=mlrun.common.schemas.ProjectOutput)
+@router.get("/projects/{name}", response_model=schemas.ProjectOutput)
 async def get_project(
     name: str,
     format_: mlrun.common.formatters.ProjectFormat = fastapi.Query(
@@ -179,7 +179,7 @@ async def get_project(
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
         framework.api.deps.get_db_session
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -204,7 +204,7 @@ async def get_project(
         else:
             await verifier.query_project_permissions(
                 name,
-                mlrun.common.schemas.AuthorizationAction.read,
+                schemas.AuthorizationAction.read,
                 auth_info,
             )
     return project
@@ -221,14 +221,14 @@ async def delete_project(
     background_tasks: fastapi.BackgroundTasks,
     name: str,
     request: fastapi.Request,
-    deletion_strategy: mlrun.common.schemas.DeletionStrategy = fastapi.Header(
-        mlrun.common.schemas.DeletionStrategy.default(),
-        alias=mlrun.common.schemas.HeaderNames.deletion_strategy,
+    deletion_strategy: schemas.DeletionStrategy = fastapi.Header(
+        schemas.DeletionStrategy.default(),
+        alias=schemas.HeaderNames.deletion_strategy,
     ),
     # TODO: we're in a http request context here, therefore it doesn't make sense that by default it will hold the
     #  request until the process will be completed - after UI supports waiting - change default to False
     wait_for_completion: bool = fastapi.Query(True, alias="wait-for-completion"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -260,7 +260,7 @@ async def delete_project(
         else:
             await verifier.query_project_permissions(
                 name,
-                mlrun.common.schemas.AuthorizationAction.delete,
+                schemas.AuthorizationAction.delete,
                 auth_info,
             )
 
@@ -268,7 +268,7 @@ async def delete_project(
     # that is why we re-route requests to chief
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info(
             "Requesting to delete project, re-routing to chief",
@@ -284,7 +284,7 @@ async def delete_project(
         services.api.crud.Projects().verify_project_is_empty(
             db_session, name, auth_info
         )
-        if deletion_strategy == mlrun.common.schemas.DeletionStrategy.check:
+        if deletion_strategy == schemas.DeletionStrategy.check:
             # if the strategy is check, we don't want to delete the project, only to check if it is empty
             return fastapi.Response(status_code=http.HTTPStatus.NO_CONTENT.value)
         elif deletion_strategy.is_restricted():
@@ -293,7 +293,7 @@ async def delete_project(
             # process_model_monitoring_secret).
             # therefore, we change the deletion strategy to cascading to both ensure we won't fail later, and that we
             # will delete the project and all its resources.
-            deletion_strategy = mlrun.common.schemas.DeletionStrategy.cascading
+            deletion_strategy = schemas.DeletionStrategy.cascading
 
     igz_version = mlrun.mlconf.get_parsed_igz_version()
     if (
@@ -331,7 +331,7 @@ async def delete_project(
         if framework.utils.helpers.is_request_from_leader(auth_info.projects_role):
             raise exc
 
-        if project.status.state != mlrun.common.schemas.ProjectState.archived:
+        if project.status.state != schemas.ProjectState.archived:
             raise mlrun.errors.MLRunPreconditionFailedError(
                 f"Failed to delete project {name}. Project not found in leader, but it is not in archived state."
             )
@@ -370,18 +370,18 @@ async def delete_project(
     return fastapi.Response(status_code=http.HTTPStatus.NO_CONTENT.value)
 
 
-@router.get("/projects", response_model=mlrun.common.schemas.ProjectsOutput)
+@router.get("/projects", response_model=schemas.ProjectsOutput)
 async def list_projects(
     format_: mlrun.common.formatters.ProjectFormat = fastapi.Query(
         mlrun.common.formatters.ProjectFormat.full, alias="format"
     ),
     owner: str | None = None,
     labels: list[str] = fastapi.Query(None, alias="label"),
-    state: mlrun.common.schemas.ProjectState = None,
+    state: schemas.ProjectState = None,
     updated_after: datetime.datetime | None = fastapi.Query(
         None, alias="updated_after"
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -423,13 +423,13 @@ async def list_projects(
 
 
 @router.get(
-    "/project-summaries", response_model=mlrun.common.schemas.ProjectSummariesOutput
+    "/project-summaries", response_model=schemas.ProjectSummariesOutput
 )
 async def list_project_summaries(
     owner: str | None = None,
     labels: list[str] = fastapi.Query(None, alias="label"),
-    state: mlrun.common.schemas.ProjectState = None,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    state: schemas.ProjectState = None,
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -466,14 +466,14 @@ async def list_project_summaries(
 
 
 @router.get(
-    "/project-summaries/{name}", response_model=mlrun.common.schemas.ProjectSummary
+    "/project-summaries/{name}", response_model=schemas.ProjectSummary
 )
 async def get_project_summary(
     name: str,
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
         framework.api.deps.get_db_session
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -487,7 +487,7 @@ async def get_project_summary(
     ):
         await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     return project_summary
@@ -497,8 +497,8 @@ async def get_project_summary(
 async def load_project(
     name: str,
     url: str,
-    secrets: mlrun.common.schemas.SecretsData = None,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    secrets: schemas.SecretsData = None,
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -521,9 +521,9 @@ async def load_project(
     :returns: a Run object of the load project function
     """
 
-    project = mlrun.common.schemas.Project(
-        metadata=mlrun.common.schemas.ProjectMetadata(name=name),
-        spec=mlrun.common.schemas.ProjectSpec(source=url),
+    project = schemas.Project(
+        metadata=schemas.ProjectMetadata(name=name),
+        spec=schemas.ProjectSpec(source=url),
     )
 
     await _ensure_project_create_or_update_permissions(db_session, name, auth_info)
@@ -539,10 +539,10 @@ async def load_project(
     # Storing secrets in project
     if secrets is not None:
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project.metadata.name,
             secrets.provider,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
 
@@ -581,7 +581,7 @@ async def load_project(
 async def _verify_patch_project_permissions(
     project_name: str,
     project_patch: dict,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
 ):
     """Apply fine-grained permission checks for project patch requests.
 
@@ -598,12 +598,12 @@ async def _verify_patch_project_permissions(
 
     if modifies_owner:
         await auth_verifier.query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.project_owner,
+            schemas.AuthorizationResourceTypes.project_owner,
             project_name,
             "",
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
-            resource_namespace=mlrun.common.schemas.AuthorizationResourceNamespace.mgmt,
+            resource_namespace=schemas.AuthorizationResourceNamespace.mgmt,
         )
 
     # Run the regular resource-level check when non-owner fields are touched, or as a fallback when the patch doesn't
@@ -611,7 +611,7 @@ async def _verify_patch_project_permissions(
     if modifies_other or not modifies_owner:
         await auth_verifier.query_project_permissions(
             project_name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
 
@@ -635,7 +635,7 @@ def _patch_modifies_non_owner_fields(project_patch: dict) -> bool:
 async def _ensure_project_create_or_update_permissions(
     db_session: sqlalchemy.orm.Session,
     project_name: str,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
 ):
     """Ensure create or update permissions based on project existence."""
     # Only check leader header in iguazio v3
@@ -675,7 +675,7 @@ async def _ensure_project_create_or_update_permissions(
         else:
             await verifier.query_project_permissions(
                 project_name,
-                mlrun.common.schemas.AuthorizationAction.update,
+                schemas.AuthorizationAction.update,
                 auth_info,
             )
         return
@@ -684,7 +684,7 @@ async def _ensure_project_create_or_update_permissions(
     # that the user has create permissions for projects.
     if mlrun.mlconf.is_iguazio_v4_mode():
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.project_global,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationResourceTypes.project_global,
+            schemas.AuthorizationAction.create,
             auth_info,
         )

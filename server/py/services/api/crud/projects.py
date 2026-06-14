@@ -24,7 +24,6 @@ import sqlalchemy.orm
 
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 import mlrun_pipelines.client
@@ -37,6 +36,7 @@ import framework.utils.clients.nuclio
 import framework.utils.clients.service_account_token as service_account_token
 import framework.utils.projects.remotes.follower as project_follower
 import framework.utils.singletons.db
+import schemas
 import services.alerts.crud
 import services.api.crud
 import services.api.crud.model_monitoring
@@ -65,8 +65,8 @@ class Projects(
     def create_project(
         self,
         session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug(
             "Creating project",
@@ -83,14 +83,14 @@ class Projects(
             framework.utils.singletons.db.get_db().create_project(session, project)
         except Exception as exc:
             self._emit_project_lifecycle_event(
-                action=mlrun.common.schemas.ProjectLifecycleEventActions.creation_failed,
+                action=schemas.ProjectLifecycleEventActions.creation_failed,
                 project_name=project.metadata.name,
                 actor=auth_info.username,
                 error=exc,
             )
             raise
         self._emit_project_lifecycle_event(
-            action=mlrun.common.schemas.ProjectLifecycleEventActions.creation_succeeded,
+            action=schemas.ProjectLifecycleEventActions.creation_succeeded,
             project_name=project.metadata.name,
             actor=auth_info.username,
         )
@@ -99,8 +99,8 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug(
             "Storing project",
@@ -120,8 +120,8 @@ class Projects(
         session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug(
             "Patching project", name=name, project=project, patch_mode=patch_mode
@@ -134,8 +134,8 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         background_task_name: str | None = None,
         model_monitoring_access_key: str | None = None,
     ):
@@ -145,7 +145,7 @@ class Projects(
         )
         if (
             deletion_strategy.is_restricted()
-            or deletion_strategy == mlrun.common.schemas.DeletionStrategy.check
+            or deletion_strategy == schemas.DeletionStrategy.check
         ):
             if not framework.utils.singletons.db.get_db().is_project_exists(
                 session, name
@@ -156,7 +156,7 @@ class Projects(
             # if the flow arrived here via the delete project background task, the project is already verified to be
             # empty and the strategy was switched to 'cascading' so we won't arrive at this decision tree.
             self.verify_project_is_empty(session, name, auth_info)
-            if deletion_strategy == mlrun.common.schemas.DeletionStrategy.check:
+            if deletion_strategy == schemas.DeletionStrategy.check:
                 return
         elif deletion_strategy.is_cascading():
             self.delete_project_resources(
@@ -175,14 +175,14 @@ class Projects(
             )
         except Exception as exc:
             self._emit_project_lifecycle_event(
-                action=mlrun.common.schemas.ProjectLifecycleEventActions.deletion_failed,
+                action=schemas.ProjectLifecycleEventActions.deletion_failed,
                 project_name=name,
                 actor=auth_info.username,
                 error=exc,
             )
             raise
         self._emit_project_lifecycle_event(
-            action=mlrun.common.schemas.ProjectLifecycleEventActions.deletion_succeeded,
+            action=schemas.ProjectLifecycleEventActions.deletion_succeeded,
             project_name=name,
             actor=auth_info.username,
         )
@@ -191,7 +191,7 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         framework.utils.singletons.db.get_db().verify_project_has_no_related_resources(
             session, name
@@ -202,7 +202,7 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         model_monitoring_access_key: str | None = None,
     ):
         logger.debug(
@@ -242,7 +242,7 @@ class Projects(
         # log collector service will delete the logs, so we don't need to do it here
         if (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.legacy
+            == schemas.LogsCollectorMode.legacy
         ):
             services.api.crud.Logs().delete_project_logs_legacy(name)
 
@@ -318,21 +318,21 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOut:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOut:
         return framework.utils.singletons.db.get_db().get_project(session, name)
 
     def list_projects(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         return framework.utils.singletons.db.get_db().list_projects(
             session, owner, format_, labels, state, names, updated_after
         )
@@ -340,8 +340,8 @@ class Projects(
     async def list_allowed_project_names(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo,
-        action: mlrun.common.schemas.AuthorizationAction = mlrun.common.schemas.AuthorizationAction.read,
+        auth_info: schemas.AuthInfo,
+        action: schemas.AuthorizationAction = schemas.AuthorizationAction.read,
         project: str | None = None,
         **project_filters,
     ) -> list[str]:
@@ -349,7 +349,7 @@ class Projects(
             await (
                 framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
                     project,
-                    mlrun.common.schemas.AuthorizationAction.read,
+                    schemas.AuthorizationAction.read,
                     auth_info,
                 )
             )
@@ -370,8 +370,8 @@ class Projects(
     async def list_allowed_project_names_with_creation_time(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo,
-        action: mlrun.common.schemas.AuthorizationAction = mlrun.common.schemas.AuthorizationAction.read,
+        auth_info: schemas.AuthInfo,
+        action: schemas.AuthorizationAction = schemas.AuthorizationAction.read,
         project: str | None = None,
         **project_filters,
     ) -> list[tuple[str, datetime.datetime]]:
@@ -379,7 +379,7 @@ class Projects(
             await (
                 framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
                     project,
-                    mlrun.common.schemas.AuthorizationAction.read,
+                    schemas.AuthorizationAction.read,
                     auth_info,
                 )
             )
@@ -415,12 +415,12 @@ class Projects(
     async def list_project_summaries(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         project_summaries = await fastapi.concurrency.run_in_threadpool(
             framework.utils.singletons.db.get_db().list_project_summaries,
             session,
@@ -430,7 +430,7 @@ class Projects(
             names,
         )
 
-        return mlrun.common.schemas.ProjectSummariesOutput(
+        return schemas.ProjectSummariesOutput(
             project_summaries=project_summaries
         )
 
@@ -438,8 +438,8 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         # Call get project so we'll explode if project doesn't exists
         await fastapi.concurrency.run_in_threadpool(self.get_project, session, name)
         return await fastapi.concurrency.run_in_threadpool(
@@ -450,7 +450,7 @@ class Projects(
 
     def _emit_project_lifecycle_event(
         self,
-        action: mlrun.common.schemas.ProjectLifecycleEventActions,
+        action: schemas.ProjectLifecycleEventActions,
         project_name: str,
         actor: str | None,
         error: BaseException | str | None = None,
@@ -479,7 +479,7 @@ class Projects(
         self,
         session: sqlalchemy.orm.Session,
         project: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         # Note: this check lists also internal secrets. The assumption is that any internal secret that relate to
         # an MLRun resource (such as model-endpoints) was already verified in previous checks. Therefore, any internal
@@ -499,7 +499,7 @@ class Projects(
             nuclio_client.delete_project(
                 session,
                 project,
-                deletion_strategy=mlrun.common.schemas.DeletionStrategy.check,
+                deletion_strategy=schemas.DeletionStrategy.check,
                 auth_info=auth_info,
             )
 
@@ -580,7 +580,7 @@ class Projects(
         for project_data in projects_output.projects:
             project_name = project_data[0]
             project_summaries.append(
-                mlrun.common.schemas.ProjectSummary(
+                schemas.ProjectSummary(
                     name=project_name,
                     files_count=project_to_files_count.get(project_name, 0),
                     distinct_schedules_count=project_to_schedule_count.get(
@@ -658,7 +658,7 @@ class Projects(
 
     @staticmethod
     def _emit_inventory_telemetry(
-        projects_output: mlrun.common.schemas.ProjectsOutput,
+        projects_output: schemas.ProjectsOutput,
         project_counters: tuple[dict[str, int], ...],
         pipeline_counters: tuple[dict[str, int], ...],
     ) -> None:
@@ -964,7 +964,7 @@ class Projects(
     def _wait_for_nuclio_project_deletion(
         project_name: str,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         if not mlrun.mlconf.nuclio_dashboard_url:
             return
@@ -1058,7 +1058,7 @@ class Projects(
 
     def prepare_create_project(
         self,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError(
@@ -1099,7 +1099,7 @@ class Projects(
     def update_project_follower(
         self,
         name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError(

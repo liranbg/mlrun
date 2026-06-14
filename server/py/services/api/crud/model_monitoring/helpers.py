@@ -18,11 +18,11 @@ import typing
 import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.constants as mm_constants
 import mlrun.errors
 from mlrun.utils import logger
 
+import schemas
+import schemas.model_monitoring.constants as mm_constants
 import services.api.crud.functions
 import services.api.crud.projects
 
@@ -33,7 +33,7 @@ def json_loads_if_not_none(field: typing.Any) -> typing.Any:
     )
 
 
-def get_access_key(auth_info: mlrun.common.schemas.AuthInfo):
+def get_access_key(auth_info: schemas.AuthInfo):
     """
     Get access key from the current data session. This method is usually used to verify that the session
     is valid and contains an access key.
@@ -83,12 +83,12 @@ async def get_stream_url(
 
     status = func.get("status", {})
     state = status.get("state", "")
-    if state in mlrun.common.schemas.FunctionState.failed_states():
+    if state in schemas.FunctionState.failed_states():
         raise mlrun.errors.MLRunPreconditionFailedError(
             f"Model monitoring stream function is in terminal failure state {state!r} "
             f"for project {project!r}. Re-run `project.enable_model_monitoring()` to recover."
         )
-    if state != mlrun.common.schemas.FunctionState.ready:
+    if state != schemas.FunctionState.ready:
         logger.warning(
             "Model monitoring stream function is not in ready state — "
             "MODEL_MONITORING_URL may not be reachable until the stream pod becomes ready.",
@@ -107,7 +107,7 @@ async def get_stream_url(
 def get_monitoring_parquet_path(
     db_session: sqlalchemy.orm.Session,
     project: str,
-    kind: str = mlrun.common.schemas.model_monitoring.FileTargetKind.PARQUET,
+    kind: str = schemas.model_monitoring.FileTargetKind.PARQUET,
 ) -> str:
     """Get model monitoring parquet target for the current project. The parquet target path is based on the
     project artifact path. If project artifact path is not defined, the parquet target path will be based on MLRun

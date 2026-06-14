@@ -25,12 +25,12 @@ from sqlalchemy.orm import Session
 
 import mlrun.common.model_monitoring
 import mlrun.common.model_monitoring.helpers
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.api.utils
 import framework.utils.auth.verifier
 import framework.utils.clients.chief
+import schemas
 from framework.api import deps
 from services.api.utils.singletons.scheduler import get_scheduler
 
@@ -40,7 +40,7 @@ router = APIRouter()
 @router.delete(
     "/projects/{project}/functions/{name}",
     responses={
-        http.HTTPStatus.ACCEPTED.value: {"model": mlrun.common.schemas.BackgroundTask},
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTask},
     },
 )
 async def delete_function(
@@ -49,15 +49,15 @@ async def delete_function(
     request: Request,
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -78,7 +78,7 @@ async def delete_function(
         # and we are running in worker, we send the request to the chief client
         if (
             mlrun.mlconf.httpdb.clusterization.role
-            != mlrun.common.schemas.ClusterizationRole.chief
+            != schemas.ClusterizationRole.chief
         ):
             logger.info(
                 "Function has a schedule, deleting",

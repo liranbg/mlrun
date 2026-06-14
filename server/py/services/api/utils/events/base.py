@@ -15,7 +15,7 @@
 import abc
 import typing
 
-import mlrun.common.schemas
+import schemas
 
 
 class BaseEventClient:
@@ -27,7 +27,7 @@ class BaseEventClient:
         self,
         username: str,
         secret_name: str,
-        action: mlrun.common.schemas.AuthSecretEventActions,
+        action: schemas.AuthSecretEventActions,
     ):
         """
         Generate an auth secret event
@@ -44,7 +44,7 @@ class BaseEventClient:
         project: str,
         secret_name: str,
         secret_keys: list[str] | None = None,
-        action: mlrun.common.schemas.SecretEventActions = mlrun.common.schemas.SecretEventActions.created,
+        action: schemas.SecretEventActions = schemas.SecretEventActions.created,
     ):
         """
         Generate a project secret event
@@ -58,7 +58,7 @@ class BaseEventClient:
 
     def generate_db_migration_event(
         self,
-        action: mlrun.common.schemas.MigrationEventActions,
+        action: schemas.MigrationEventActions,
         error: BaseException | str | None = None,
         duration_seconds: float | None = None,
         scope: list[str] | None = None,
@@ -81,7 +81,7 @@ class BaseEventClient:
 
     def generate_db_connection_event(
         self,
-        action: mlrun.common.schemas.DBConnectionEventActions,
+        action: schemas.DBConnectionEventActions,
         error: BaseException | str | None = None,
         error_category: str | None = None,
         error_code: int | str | None = None,
@@ -103,7 +103,7 @@ class BaseEventClient:
 
     def generate_log_collector_event(
         self,
-        action: mlrun.common.schemas.LogCollectorEventActions,
+        action: schemas.LogCollectorEventActions,
         error: BaseException | str | None = None,
         run_uid: str | None = None,
         project: str | None = None,
@@ -120,7 +120,7 @@ class BaseEventClient:
 
     def generate_project_lifecycle_event(
         self,
-        action: mlrun.common.schemas.ProjectLifecycleEventActions,
+        action: schemas.ProjectLifecycleEventActions,
         project_name: str,
         actor: str | None = None,
         error: BaseException | str | None = None,

@@ -22,7 +22,6 @@ from sqlalchemy.orm import Session
 
 import mlrun.common.formatters
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.utils.auth.verifier
@@ -31,6 +30,7 @@ import framework.utils.notifications
 import framework.utils.pagination
 import framework.utils.singletons.db as db_singleton
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud
 from framework.api import deps
 from framework.api.utils import log_and_raise
@@ -44,7 +44,7 @@ async def store_run(
     project: str,
     uid: str,
     iter: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await run_in_threadpool(
@@ -55,10 +55,10 @@ async def store_run(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -85,15 +85,15 @@ async def update_run(
     project: str,
     uid: str,
     iter: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )
@@ -119,7 +119,7 @@ async def get_run(
     project: str,
     uid: str,
     iter: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     format_: mlrun.common.formatters.RunFormat = Query(
         mlrun.common.formatters.RunFormat.full, alias="format"
@@ -130,10 +130,10 @@ async def get_run(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -147,15 +147,15 @@ async def delete_run(
     project: str,
     uid: str,
     iter: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -183,22 +183,22 @@ async def list_runs(
     last_update_time_to: str | None = None,
     end_time_from: str | None = None,
     end_time_to: str | None = None,
-    partition_by: mlrun.common.schemas.RunPartitionByField = Query(
+    partition_by: schemas.RunPartitionByField = Query(
         None, alias="partition-by"
     ),
     rows_per_partition: int = Query(1, alias="rows-per-partition", gt=0),
-    partition_sort_by: mlrun.common.schemas.SortField = Query(
+    partition_sort_by: schemas.SortField = Query(
         None, alias="partition-sort-by"
     ),
-    partition_order: mlrun.common.schemas.OrderType = Query(
-        mlrun.common.schemas.OrderType.desc, alias="partition-order"
+    partition_order: schemas.OrderType = Query(
+        schemas.OrderType.desc, alias="partition-order"
     ),
     max_partitions: int = Query(0, alias="max-partitions", ge=0),
     with_notifications: bool = Query(False, alias="with-notifications"),
     page: int = Query(None, gt=0),
     page_size: int = Query(None, alias="page-size", gt=0),
     page_token: str = Query(None, alias="page-token"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     if not project:
@@ -213,7 +213,7 @@ async def list_runs(
 
     async def _filter_runs(_runs):
         return await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             _runs,
             lambda run: (
                 run.get("metadata", {}).get("project"),
@@ -263,7 +263,7 @@ async def delete_runs(
     labels: list[str] = Query([], alias="label"),
     state: str | None = None,
     days_ago: int | None = None,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     if not project:
@@ -276,10 +276,10 @@ async def delete_runs(
         # Meaning there is no reason at the moment to query the permission for each run under the project
         # TODO check for every run when we will manage permission per run inside a project
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             "",
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     else:
@@ -303,10 +303,10 @@ async def delete_runs(
             # currently we fail if the user doesn't has permissions to delete runs to one of the projects in the system
             # TODO: Delete only runs from projects that user has permissions to
             await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-                mlrun.common.schemas.AuthorizationResourceTypes.run,
+                schemas.AuthorizationResourceTypes.run,
                 run_project,
                 "",
-                mlrun.common.schemas.AuthorizationAction.delete,
+                schemas.AuthorizationAction.delete,
                 auth_info,
             )
 
@@ -330,8 +330,8 @@ async def delete_runs(
 async def set_run_notifications(
     project: str,
     uid: str,
-    set_notifications_request: mlrun.common.schemas.SetNotificationRequest = Body(...),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    set_notifications_request: schemas.SetNotificationRequest = Body(...),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await run_in_threadpool(
@@ -344,10 +344,10 @@ async def set_run_notifications(
     # check permission per object type
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             resource_name=uid,
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )
@@ -358,14 +358,14 @@ async def set_run_notifications(
         auth_info,
         project,
         set_notifications_request.notifications,
-        mlrun.common.schemas.RunIdentifier(uid=uid),
+        schemas.RunIdentifier(uid=uid),
     )
     return Response(status_code=HTTPStatus.OK.value)
 
 
 @router.post(
     "/projects/{project}/runs/{uid}/abort",
-    response_model=mlrun.common.schemas.BackgroundTask,
+    response_model=schemas.BackgroundTask,
     status_code=HTTPStatus.ACCEPTED.value,
 )
 async def abort_run(
@@ -374,16 +374,16 @@ async def abort_run(
     uid: str,
     background_tasks: BackgroundTasks,
     iter: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     # check permission per object type
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             resource_name=uid,
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )
@@ -416,7 +416,7 @@ async def abort_run(
 
                 if (
                     background_task.status.state
-                    in mlrun.common.schemas.BackgroundTaskState.running
+                    in schemas.BackgroundTaskState.running
                 ):
                     logger.debug(
                         "Abort background task is still running, returning it",
@@ -429,7 +429,7 @@ async def abort_run(
                 # if the background task completed, give some grace time before triggering another one
                 elif (
                     background_task.status.state
-                    == mlrun.common.schemas.BackgroundTaskState.succeeded
+                    == schemas.BackgroundTaskState.succeeded
                 ):
                     grace_timedelta = datetime.timedelta(
                         seconds=int(
@@ -488,21 +488,21 @@ async def abort_run(
 
 @router.post(
     "/projects/{project}/runs/{uid}/push-notifications",
-    response_model=mlrun.common.schemas.BackgroundTask,
+    response_model=schemas.BackgroundTask,
 )
 async def push_notifications(
     project: str,
     uid: str,
     background_tasks: BackgroundTasks,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )

@@ -16,20 +16,20 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.feature_store
-from mlrun.common.schemas.feature_store import (
-    FeatureSetDigestOutputV2,
-    FeatureSetDigestSpecV2,
-)
 from mlrun.utils import run_in_threadpool
 
 import framework.utils.auth.verifier
 import framework.utils.singletons.project_member
+import schemas
 import services.api.api.endpoints.feature_store
 import services.api.crud
 from framework.api import deps
+from schemas.feature_store import (
+    FeatureSetDigestOutputV2,
+    FeatureSetDigestSpecV2,
+)
 
 router = APIRouter(prefix="/v2/projects/{project}")
 
@@ -59,21 +59,21 @@ def _dedup_feature_set(
     return feature_set_index
 
 
-@router.get("/entities", response_model=mlrun.common.schemas.EntitiesOutputV2)
+@router.get("/entities", response_model=schemas.EntitiesOutputV2)
 async def list_entities(
     project: str,
     name: str | None = None,
     tag: str | None = None,
     labels: list[str] = Query(None, alias="label"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.feature_set,
+            resource_type=schemas.AuthorizationResourceTypes.feature_set,
             project_name=project,
             resource_name="",
-            action=mlrun.common.schemas.AuthorizationAction.read,
+            action=schemas.AuthorizationAction.read,
             auth_info=auth_info,
         )
     )
@@ -88,22 +88,22 @@ async def list_entities(
     return entities
 
 
-@router.get("/features", response_model=mlrun.common.schemas.FeaturesOutputV2)
+@router.get("/features", response_model=schemas.FeaturesOutputV2)
 async def list_features(
     project: str,
     name: str | None = None,
     tag: str | None = None,
     entities: list[str] = Query(None, alias="entity"),
     labels: list[str] = Query(None, alias="label"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.feature_set,
+            resource_type=schemas.AuthorizationResourceTypes.feature_set,
             project_name=project,
             resource_name="",
-            action=mlrun.common.schemas.AuthorizationAction.read,
+            action=schemas.AuthorizationAction.read,
             auth_info=auth_info,
         )
     )

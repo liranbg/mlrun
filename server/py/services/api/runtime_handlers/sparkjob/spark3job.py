@@ -21,7 +21,6 @@ from kubernetes.client.rest import ApiException
 from sqlalchemy.orm import Session
 
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.k8s_utils
 import mlrun.utils.regex
@@ -37,6 +36,7 @@ from mlrun.utils import (
 )
 
 import framework.utils.singletons.k8s
+import schemas
 from framework.db.base import DBInterface
 from services.api.runtime_handlers.kubejob import KubeRuntimeHandler
 
@@ -89,7 +89,7 @@ class Spark3RuntimeHandler(KubeRuntimeHandler, abc.ABC):
         runtime: mlrun.runtimes.sparkjob.Spark3Runtime,
         run: mlrun.run.RunObject,
         execution: mlrun.execution.MLClientCtx,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
     ):
         self._validate_sparkjob(runtime, run)
 

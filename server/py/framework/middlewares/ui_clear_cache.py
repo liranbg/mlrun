@@ -22,8 +22,9 @@ from uvicorn._types import (
 )
 
 import mlrun
-import mlrun.common.schemas
 from mlrun.config import config
+
+import schemas
 
 
 class UiClearCacheMiddleware:
@@ -51,7 +52,7 @@ class UiClearCacheMiddleware:
         # otherwise, do not ask ui to reload its cache as it will make each request to reload ui and clear cache
         request_headers = MutableHeaders(scope=scope)
         ui_version = request_headers.get(
-            mlrun.common.schemas.constants.HeaderNames.ui_version, ""
+            schemas.constants.HeaderNames.ui_version, ""
         )
 
         async def send_wrapper(message: Message) -> None:
@@ -67,7 +68,7 @@ class UiClearCacheMiddleware:
                 response_headers.append("Clear-Site-Data", '"cache"')
                 # tell ui to reload
                 response_headers.append(
-                    mlrun.common.schemas.constants.HeaderNames.ui_clear_cache,
+                    schemas.constants.HeaderNames.ui_clear_cache,
                     "true",
                 )
             await send(message)

@@ -37,7 +37,6 @@ import mlrun.artifacts.base
 import mlrun.common.db.dialects
 import mlrun.common.formatters
 import mlrun.common.runtimes
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.utils
@@ -51,6 +50,7 @@ import framework.db.sqldb.helpers
 import framework.db.sqldb.models
 import framework.db.sqldb.sql_session
 import framework.utils.pagination_cache
+import schemas
 import services.api.utils.db.alembic
 import services.api.utils.db.backup
 import services.api.utils.events.events_factory
@@ -140,7 +140,7 @@ def _initialize_db_from_scratch(
         func=db.create_data_version,
         version=str(latest_data_version),
     )
-    mlrun.mlconf.httpdb.state = mlrun.common.schemas.APIStates.online
+    mlrun.mlconf.httpdb.state = schemas.APIStates.online
     # initialize system id
     framework.db.session.run_function_with_new_db_session(func=_init_system_id)
 
@@ -170,25 +170,25 @@ def _migrate_existing_data(
     )
 
     if not perform_migrations_if_needed and is_migration_needed:
-        state = mlrun.common.schemas.APIStates.waiting_for_migrations
+        state = schemas.APIStates.waiting_for_migrations
         mlrun.utils.logger.info("Migration is needed, changing API state", state=state)
         mlrun.mlconf.httpdb.state = state
         _publish_db_migration_event(
-            mlrun.common.schemas.MigrationEventActions.required,
+            schemas.MigrationEventActions.required,
             scope=migration_scope,
             versions=migration_versions,
         )
         return
 
     mlrun.utils.logger.info("Creating initial data")
-    mlrun.mlconf.httpdb.state = mlrun.common.schemas.APIStates.migrations_in_progress
+    mlrun.mlconf.httpdb.state = schemas.APIStates.migrations_in_progress
 
     db_session = framework.db.session.create_session()
     try:
         if is_migration_needed:
             migration_start_monotonic = time.monotonic()
             _publish_db_migration_event(
-                mlrun.common.schemas.MigrationEventActions.started,
+                schemas.MigrationEventActions.started,
                 scope=migration_scope,
                 versions=migration_versions,
             )
@@ -205,13 +205,13 @@ def _migrate_existing_data(
                 _add_initial_data(db_session)
                 _perform_data_migrations(db_session)
             except Exception as exc:
-                state = mlrun.common.schemas.APIStates.migrations_failed
+                state = schemas.APIStates.migrations_failed
                 mlrun.utils.logger.warning(
                     "Migrations failed, changing API state", state=state
                 )
                 mlrun.mlconf.httpdb.state = state
                 _publish_db_migration_event(
-                    mlrun.common.schemas.MigrationEventActions.failed,
+                    schemas.MigrationEventActions.failed,
                     error=exc,
                     duration_seconds=_elapsed_since(migration_start_monotonic),
                     scope=migration_scope,
@@ -219,7 +219,7 @@ def _migrate_existing_data(
                 )
                 raise
             _publish_db_migration_event(
-                mlrun.common.schemas.MigrationEventActions.completed,
+                schemas.MigrationEventActions.completed,
                 duration_seconds=_elapsed_since(migration_start_monotonic),
                 scope=migration_scope,
                 versions=migration_versions,
@@ -231,9 +231,9 @@ def _migrate_existing_data(
     # should happen - we can't do it here because it requires an asyncio loop which can't be accessible here
     # therefore moving to migration_completed state, and other component will take care of moving to online
     if alembic_util and is_migration_needed:
-        mlrun.mlconf.httpdb.state = mlrun.common.schemas.APIStates.migrations_completed
+        mlrun.mlconf.httpdb.state = schemas.APIStates.migrations_completed
     else:
-        mlrun.mlconf.httpdb.state = mlrun.common.schemas.APIStates.online
+        mlrun.mlconf.httpdb.state = schemas.APIStates.online
 
     # Cleanup pagination cache on api startup
     framework.db.session.run_function_with_new_db_session(
@@ -334,7 +334,7 @@ def _perform_schema_migrations(alembic_util: services.api.utils.db.alembic.Alemb
 
 
 def _publish_db_migration_event(
-    action: mlrun.common.schemas.MigrationEventActions,
+    action: schemas.MigrationEventActions,
     error: BaseException | None = None,
     duration_seconds: float | None = None,
     scope: list[str] | None = None,
@@ -443,7 +443,7 @@ def _add_initial_data(db_session: sqlalchemy.orm.Session):
 def _add_default_hub_source_if_needed(
     db: framework.db.sqldb.db.SQLDB, db_session: sqlalchemy.orm.Session
 ):
-    default_hub_source = mlrun.common.schemas.HubSource.generate_default_source()
+    default_hub_source = schemas.HubSource.generate_default_source()
     # hub_source will be None if the configuration has hub.default_source.create=False
     if not default_hub_source:
         mlrun.utils.logger.info("Not adding default hub source, per configuration")
@@ -451,7 +451,7 @@ def _add_default_hub_source_if_needed(
 
     hub_source = db.get_hub_source(
         db_session,
-        index=mlrun.common.schemas.hub.last_source_index,
+        index=schemas.hub.last_source_index,
         raise_on_not_found=False,
     )
     if not hub_source:
@@ -470,12 +470,12 @@ def _add_default_hub_source_if_needed(
 def _update_default_hub_source(
     db: framework.db.sqldb.db.SQLDB,
     db_session: sqlalchemy.orm.Session,
-    hub_source: mlrun.common.schemas.hub.HubSource = None,
+    hub_source: schemas.hub.HubSource = None,
 ):
     """
     Updates default hub source in db.
     """
-    hub_source = hub_source or mlrun.common.schemas.HubSource.generate_default_source()
+    hub_source = hub_source or schemas.HubSource.generate_default_source()
     if not hub_source:
         mlrun.utils.logger.info("Not adding default hub source, per configuration")
         return
@@ -484,8 +484,8 @@ def _update_default_hub_source(
     mlrun.utils.logger.info("Adding default hub source")
     # Not using db.store_hub_source() since it doesn't allow changing the default hub source.
     hub_record = db._transform_hub_source_schema_to_record(
-        mlrun.common.schemas.IndexedHubSource(
-            index=mlrun.common.schemas.hub.last_source_index,
+        schemas.IndexedHubSource(
+            index=schemas.hub.last_source_index,
             source=hub_source,
         )
     )
@@ -502,7 +502,7 @@ def _delete_default_hub_source(db_session: sqlalchemy.orm.Session):
         db_session.query(framework.db.sqldb.models.HubSource)
         .filter(
             framework.db.sqldb.models.HubSource.index
-            == mlrun.common.schemas.last_source_index
+            == schemas.last_source_index
         )
         .one_or_none()
     )
@@ -738,7 +738,7 @@ def _migrate_monitoring_functions_labels(
     Update labels for model monitoring infra functions.
     """
     mm_infra_function_names = (
-        mlrun.common.schemas.model_monitoring.MonitoringFunctionNames.list()
+        schemas.model_monitoring.MonitoringFunctionNames.list()
     )
 
     def filter_infra_func():
@@ -752,7 +752,7 @@ def _migrate_monitoring_functions_labels(
                     and_(
                         functions_labels.parent == functions.id,
                         functions_labels.name
-                        == mlrun.common.schemas.ModelMonitoringInfraLabel.KEY,
+                        == schemas.ModelMonitoringInfraLabel.KEY,
                     )
                 )
             ),
@@ -765,16 +765,16 @@ def _migrate_monitoring_functions_labels(
         )
         # Add a new label to the function metadata
         function_metadata_labels_dict[
-            mlrun.common.schemas.ModelMonitoringInfraLabel.KEY
-        ] = mlrun.common.schemas.ModelMonitoringInfraLabel.VAL
+            schemas.ModelMonitoringInfraLabel.KEY
+        ] = schemas.ModelMonitoringInfraLabel.VAL
         function_dict["metadata"]["labels"] = function_metadata_labels_dict
 
         record.struct = function_dict
 
         # Generate a new label object
         new_label = framework.db.sqldb.models.Function.Label(
-            name=mlrun.common.schemas.ModelMonitoringInfraLabel.KEY,
-            value=mlrun.common.schemas.ModelMonitoringInfraLabel.VAL,
+            name=schemas.ModelMonitoringInfraLabel.KEY,
+            value=schemas.ModelMonitoringInfraLabel.VAL,
             parent=record.id,
         )
 
@@ -1260,7 +1260,7 @@ def _create_project_summaries(db, db_session):
     project_summaries = [
         framework.db.sqldb.models.ProjectSummary(
             project=project_name,
-            summary=mlrun.common.schemas.ProjectSummary(name=project_name).dict(),
+            summary=schemas.ProjectSummary(name=project_name).dict(),
         )
         for project_name in projects.projects
     ]

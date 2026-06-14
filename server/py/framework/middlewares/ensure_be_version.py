@@ -21,7 +21,7 @@ from uvicorn._types import (
     Scope,
 )
 
-import mlrun.common.schemas
+import schemas
 
 
 class EnsureBackendVersionMiddleware:
@@ -46,7 +46,7 @@ class EnsureBackendVersionMiddleware:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
                 headers.append(
-                    mlrun.common.schemas.constants.HeaderNames.backend_version,
+                    schemas.constants.HeaderNames.backend_version,
                     self._backend_version,
                 )
             await send(message)

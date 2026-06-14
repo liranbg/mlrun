@@ -23,7 +23,6 @@ from sqlalchemy.orm import Session
 
 import mlrun
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.projects.pipelines
 import mlrun_pipelines.common.models
 from mlrun.k8s_utils import sanitize_label_value
@@ -33,6 +32,7 @@ import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.clients.chief
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud
 import services.api.utils.helpers
 from framework.api.utils import log_and_raise
@@ -43,22 +43,22 @@ router = fastapi.APIRouter()
 @router.post(
     "/projects/{project}/workflows/{name}/submit",
     status_code=HTTPStatus.ACCEPTED.value,
-    response_model=mlrun.common.schemas.WorkflowResponse,
+    response_model=schemas.WorkflowResponse,
 )
 async def submit_workflow(
     project: str,
     name: str,
     request: fastapi.Request,
-    workflow_request: mlrun.common.schemas.WorkflowRequest = mlrun.common.schemas.WorkflowRequest(),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    workflow_request: schemas.WorkflowRequest = schemas.WorkflowRequest(),
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
     client_version: str | None = fastapi.Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
     client_python_version: str | None = fastapi.Header(
-        None, alias=mlrun.common.schemas.HeaderNames.python_version
+        None, alias=schemas.HeaderNames.python_version
     ),
 ):
     """
@@ -86,7 +86,7 @@ async def submit_workflow(
     :returns: response that contains the project name, workflow name, name of the workflow,
              status, run id (in case of a single run) and schedule (in case of scheduling)
     """
-    project: mlrun.common.schemas.ProjectOut = await run_in_threadpool(
+    project: schemas.ProjectOut = await run_in_threadpool(
         framework.utils.singletons.project_member.get_project_member().get_project,
         db_session=db_session,
         name=project,
@@ -103,20 +103,20 @@ async def submit_workflow(
     # check permission CREATE run
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.run,
+            resource_type=schemas.AuthorizationResourceTypes.run,
             project_name=project.metadata.name,
             resource_name=workflow_request.run_name or "",
-            action=mlrun.common.schemas.AuthorizationAction.create,
+            action=schemas.AuthorizationAction.create,
             auth_info=auth_info,
         )
     )
     # check permission READ workflow on project's workflow
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.workflow,
+            resource_type=schemas.AuthorizationResourceTypes.workflow,
             project_name=project.metadata.name,
             resource_name=name,
-            action=mlrun.common.schemas.AuthorizationAction.read,
+            action=schemas.AuthorizationAction.read,
             auth_info=auth_info,
         )
     )
@@ -127,10 +127,10 @@ async def submit_workflow(
     # Check permission CREATE workflow on new workflow's name
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.workflow,
+            resource_type=schemas.AuthorizationResourceTypes.workflow,
             project_name=project.metadata.name,
             resource_name=requested_workflow_name,
-            action=mlrun.common.schemas.AuthorizationAction.create,
+            action=schemas.AuthorizationAction.create,
             auth_info=auth_info,
         )
     )
@@ -138,16 +138,16 @@ async def submit_workflow(
     # Validate permissions and re-route to chief if needed in case of schedule
     if _is_requested_schedule(name, workflow_request.spec, project):
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.schedule,
+            resource_type=schemas.AuthorizationResourceTypes.schedule,
             project_name=project.metadata.name,
             resource_name=requested_workflow_name,
-            action=mlrun.common.schemas.AuthorizationAction.create,
+            action=schemas.AuthorizationAction.create,
             auth_info=auth_info,
         )
 
         if (
             mlrun.mlconf.httpdb.clusterization.role
-            != mlrun.common.schemas.ClusterizationRole.chief
+            != schemas.ClusterizationRole.chief
         ):
             chief_client = framework.utils.clients.chief.Client()
             return await chief_client.submit_workflow(
@@ -248,7 +248,7 @@ async def submit_workflow(
             error=mlrun.errors.err_to_str(error),
         )
 
-    return mlrun.common.schemas.WorkflowResponse(
+    return schemas.WorkflowResponse(
         project=project.metadata.name,
         name=workflow_spec.name,
         status=str(status),
@@ -259,8 +259,8 @@ async def submit_workflow(
 
 def _is_requested_schedule(
     name: str,
-    workflow_spec: mlrun.common.schemas.WorkflowSpec,
-    project: mlrun.common.schemas.ProjectOut,
+    workflow_spec: schemas.WorkflowSpec,
+    project: schemas.ProjectOut,
 ) -> bool:
     """
     Checks if the workflow needs to be scheduled, which can be decided either the request itself
@@ -280,7 +280,7 @@ def _is_requested_schedule(
 
 
 def _get_workflow_by_name(
-    project: mlrun.common.schemas.ProjectOut, name: str
+    project: schemas.ProjectOut, name: str
 ) -> dict | None:
     """
     Getting workflow from project by name.
@@ -297,11 +297,11 @@ def _get_workflow_by_name(
 
 
 def _fill_workflow_missing_fields_from_project(
-    project: mlrun.common.schemas.ProjectOut,
+    project: schemas.ProjectOut,
     workflow_name: str,
-    spec: mlrun.common.schemas.WorkflowSpec,
+    spec: schemas.WorkflowSpec,
     arguments: dict,
-) -> mlrun.common.schemas.WorkflowSpec:
+) -> schemas.WorkflowSpec:
     """
     Fill the workflow spec details from the project object, with favour to spec
 
@@ -340,7 +340,7 @@ def _fill_workflow_missing_fields_from_project(
             else "Workflow spec is invalid",
         )
 
-    workflow_spec = mlrun.common.schemas.WorkflowSpec(**workflow)
+    workflow_spec = schemas.WorkflowSpec(**workflow)
     # Overriding arguments of the existing workflow:
     if arguments:
         workflow_spec.args = workflow_spec.args or {}
@@ -369,18 +369,18 @@ def _update_dict(dict_1: dict, dict_2: collections.abc.Mapping):
 
 @router.get(
     "/projects/{project}/workflows/{name}/runs/{uid}",
-    response_model=mlrun.common.schemas.GetWorkflowResponse,
+    response_model=schemas.GetWorkflowResponse,
 )
 async def get_workflow_id(
     project: str,
     name: str,
     uid: str,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
     engine: str = "kfp",
-) -> mlrun.common.schemas.GetWorkflowResponse:
+) -> schemas.GetWorkflowResponse:
     """
     Retrieve workflow id from the uid of the workflow runner.
     When creating a remote workflow we are creating an auxiliary function
@@ -405,20 +405,20 @@ async def get_workflow_id(
     # Check permission READ run:
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
     # Check permission READ workflow:
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.workflow,
+            schemas.AuthorizationResourceTypes.workflow,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -441,7 +441,7 @@ async def set_run_retrying_status(
     uid: str,
     name: str,
     retrying: bool,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -460,10 +460,10 @@ async def set_run_retrying_status(
     # check update permission on runs
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.run,
+            schemas.AuthorizationResourceTypes.run,
             project,
             resource_name=uid,
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )
@@ -471,10 +471,10 @@ async def set_run_retrying_status(
     # Check permission UPDATE workflow:
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.workflow,
+            schemas.AuthorizationResourceTypes.workflow,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )

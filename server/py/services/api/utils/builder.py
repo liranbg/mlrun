@@ -25,7 +25,6 @@ from kubernetes import client
 
 import mlrun.common.constants
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.model
 import mlrun.runtimes
@@ -39,6 +38,7 @@ from mlrun.utils.helpers import remove_image_protocol_prefix
 
 import framework.utils.helpers
 import framework.utils.singletons.k8s
+import schemas
 
 # mlrun datastore schemes kaniko cannot resolve as --context.
 # excludes kaniko-native schemes (s3, gs/gcs, http/https) and v3io (igz FUSE-mount).
@@ -180,7 +180,7 @@ def make_kaniko_pod(
     extra_labels=None,
     project_secrets=None,
     project_default_fucntion_node_selector=None,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
     *,
     source_to_fetch: str | None = None,
 ):
@@ -419,7 +419,7 @@ def configure_kaniko_ecr_env_and_init_container(kpod, registry, repo):
 
 
 def build_image(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     project: str,
     image_target,
     commands=None,
@@ -544,7 +544,7 @@ def build_image(
     enriched_group_id = None
     if (
         mlrun.mlconf.function.spec.security_context.enrichment_mode
-        != mlrun.common.schemas.SecurityContextEnrichmentModes.disabled.value
+        != schemas.SecurityContextEnrichmentModes.disabled.value
     ):
         from framework.api.utils import ensure_function_security_context
 
@@ -629,7 +629,7 @@ def get_kaniko_spec_attributes_from_runtime(
     project,
     runtime_spec,
     project_default_fucntion_node_selector,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
 ):
     """Get the names of Kaniko spec attributes that are defined for runtime but should also be applied to Kaniko."""
     # preemption mode scheduling constraints cache
@@ -739,7 +739,7 @@ def resolve_upgrade_pip_command(commands=None):
 
 
 def build_runtime(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     runtime: mlrun.runtimes.BaseRuntime,
     with_mlrun=True,
     mlrun_version_specifier=None,
@@ -759,7 +759,7 @@ def build_runtime(
             runtime_name=runtime.metadata.name,
             project=project,
         )
-        runtime.status.state = mlrun.common.schemas.FunctionState.ready
+        runtime.status.state = schemas.FunctionState.ready
         return True
 
     base_image: str = build.base_image or runtime.spec.image
@@ -796,7 +796,7 @@ def build_runtime(
                 " (commands/source)"
             )
 
-        runtime.status.state = mlrun.common.schemas.FunctionState.ready
+        runtime.status.state = schemas.FunctionState.ready
         return True
 
     build.image = _resolve_function_image_name(runtime, build.image)
@@ -856,11 +856,11 @@ def build_runtime(
         # using enriched base image for the runtime spec image, because this will be the image that the function will
         # run with
         runtime.spec.image = enriched_base_image
-        runtime.status.state = mlrun.common.schemas.FunctionState.ready
+        runtime.status.state = schemas.FunctionState.ready
         return True
 
     if status.startswith("build:"):
-        runtime.status.state = mlrun.common.schemas.FunctionState.deploying
+        runtime.status.state = schemas.FunctionState.deploying
         runtime.status.build_pod = status[6:]
         # using the base_image, and not the enriched one so we won't have the client version in the image, useful for
         # exports and other cases where we don't want to have the client version in the image, but rather enriched on
@@ -870,12 +870,12 @@ def build_runtime(
 
     mlrun.utils.logger.info("Build completed", status=status)
     if status in ["failed", "error"]:
-        runtime.status.state = mlrun.common.schemas.FunctionState.error
+        runtime.status.state = schemas.FunctionState.error
         return False
 
     local = "" if build.secret or build.image.startswith(".") else "."
     runtime.spec.image = local + build.image
-    runtime.status.state = mlrun.common.schemas.FunctionState.ready
+    runtime.status.state = schemas.FunctionState.ready
     return True
 
 

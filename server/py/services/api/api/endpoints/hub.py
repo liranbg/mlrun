@@ -20,14 +20,14 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 import mlrun
-import mlrun.common.schemas
-import mlrun.common.schemas.hub
-from mlrun.common.schemas.hub import HubSourceType
 
 import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.singletons.db
+import schemas
+import schemas.hub
 import services.api.crud
+from schemas.hub import HubSourceType
 
 router = APIRouter(prefix="/hub/sources")
 
@@ -35,19 +35,19 @@ router = APIRouter(prefix="/hub/sources")
 @router.post(
     path="",
     status_code=HTTPStatus.CREATED.value,
-    response_model=mlrun.common.schemas.hub.IndexedHubSource,
+    response_model=schemas.hub.IndexedHubSource,
 )
 async def create_source(
-    source: mlrun.common.schemas.hub.IndexedHubSource,
+    source: schemas.hub.IndexedHubSource,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
     )
@@ -66,7 +66,7 @@ async def create_source(
 
 @router.get(
     path="",
-    response_model=list[mlrun.common.schemas.hub.IndexedHubSource],
+    response_model=list[schemas.hub.IndexedHubSource],
 )
 async def list_sources(
     item_name: str | None = Query(None, alias="item-name"),
@@ -74,14 +74,14 @@ async def list_sources(
     version: str | None = Query(None),
     item_type: HubSourceType = Query(HubSourceType.functions, alias="item-type"),
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -103,14 +103,14 @@ async def list_sources(
 async def delete_source(
     source_name: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -125,12 +125,12 @@ async def delete_source(
 
 @router.get(
     path="/{source_name}",
-    response_model=mlrun.common.schemas.hub.IndexedHubSource,
+    response_model=schemas.hub.IndexedHubSource,
 )
 async def get_source(
     source_name: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -141,8 +141,8 @@ async def get_source(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -152,20 +152,20 @@ async def get_source(
 
 @router.put(
     path="/{source_name}",
-    response_model=mlrun.common.schemas.hub.IndexedHubSource,
+    response_model=schemas.hub.IndexedHubSource,
 )
 async def store_source(
     source_name: str,
-    source: mlrun.common.schemas.hub.IndexedHubSource,
+    source: schemas.hub.IndexedHubSource,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -188,7 +188,7 @@ async def store_source(
 
 @router.get(
     path="/{source_name}/items",
-    response_model=mlrun.common.schemas.hub.HubCatalog,
+    response_model=schemas.hub.HubCatalog,
 )
 async def get_catalog(
     source_name: str,
@@ -197,7 +197,7 @@ async def get_catalog(
     force_refresh: bool | None = Query(False, alias="force-refresh"),
     object_type: HubSourceType = Query(HubSourceType.functions),
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -208,8 +208,8 @@ async def get_catalog(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -226,7 +226,7 @@ async def get_catalog(
 
 @router.get(
     "/{source_name}/items/{item_name}",
-    response_model=mlrun.common.schemas.hub.HubItem,
+    response_model=schemas.hub.HubItem,
 )
 async def get_item(
     source_name: str,
@@ -236,7 +236,7 @@ async def get_item(
     force_refresh: bool | None = Query(False, alias="force-refresh"),
     item_type: HubSourceType = Query(HubSourceType.functions),
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -247,8 +247,8 @@ async def get_item(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -271,7 +271,7 @@ async def get_object(
     source_name: str,
     url: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -287,8 +287,8 @@ async def get_object(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -311,7 +311,7 @@ async def get_asset(
     version: str | None = Query(None),
     item_type: HubSourceType = Query(HubSourceType.functions),
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -337,8 +337,8 @@ async def get_asset(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.hub_source,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationResourceTypes.hub_source,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )

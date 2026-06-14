@@ -22,7 +22,6 @@ from http import HTTPStatus
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun.common.runtimes.constants import PodPhases
 from mlrun.utils import logger
@@ -30,6 +29,7 @@ from mlrun.utils import logger
 import framework.api.utils
 import framework.utils.clients.log_collector as log_collector
 import framework.utils.singletons.k8s
+import schemas
 from framework.constants import LogSources
 from framework.utils.singletons.db import get_db
 
@@ -120,13 +120,13 @@ class Logs(
         run_uid = self._resolve_run_uid(run_uid, run, attempt)
         if (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.sidecar
+            == schemas.LogsCollectorMode.sidecar
         ):
             return await self._get_log_size_from_log_collector(project, run_uid)
 
         elif (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.best_effort
+            == schemas.LogsCollectorMode.best_effort
         ):
             try:
                 return await self._get_log_size_from_log_collector(project, run_uid)
@@ -140,7 +140,7 @@ class Logs(
 
         elif (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.legacy
+            == schemas.LogsCollectorMode.legacy
         ):
             return self._get_log_size_legacy(project, run_uid)
 
@@ -179,7 +179,7 @@ class Logs(
 
         if (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.best_effort
+            == schemas.LogsCollectorMode.best_effort
             and source == LogSources.AUTO
         ):
             try:
@@ -206,7 +206,7 @@ class Logs(
                 )
         elif (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.sidecar
+            == schemas.LogsCollectorMode.sidecar
             and source == LogSources.AUTO
         ):
             log_stream = self._get_logs_from_logs_collector(
@@ -217,7 +217,7 @@ class Logs(
             )
         elif (
             mlrun.mlconf.log_collector.mode
-            == mlrun.common.schemas.LogsCollectorMode.legacy
+            == schemas.LogsCollectorMode.legacy
             or source != LogSources.AUTO
         ):
             log_stream = self._get_logs_legacy_method_generator_wrapper(

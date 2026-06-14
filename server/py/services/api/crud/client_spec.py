@@ -15,12 +15,12 @@
 import os
 from typing import Any
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun.config import Config, config, default_config
 
 import framework.utils.runtimes.mpijob
 import framework.utils.runtimes.nuclio
+import schemas
 
 
 class ClientSpec(
@@ -30,7 +30,7 @@ class ClientSpec(
         self,
         client_version: str | None = None,
         client_python_version: str | None = None,
-    ) -> mlrun.common.schemas.ClientSpec:
+    ) -> schemas.ClientSpec:
         mpijob_crd_version = (
             framework.utils.runtimes.mpijob.resolve_mpijob_crd_version()
         )
@@ -47,7 +47,7 @@ class ClientSpec(
                 config.httpdb.authentication.iguazio.authentication_endpoint,
             )
 
-        return mlrun.common.schemas.ClientSpec(
+        return schemas.ClientSpec(
             version=config.version,
             namespace=config.namespace,
             docker_registry=config.httpdb.builder.docker_registry,

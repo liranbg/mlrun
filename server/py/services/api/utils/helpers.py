@@ -18,13 +18,13 @@ import yaml
 
 import mlrun
 import mlrun.common.constants
-import mlrun.common.schemas
 import mlrun.errors
-from mlrun.common.schemas import ProjectOut, WorkflowSpec
 from mlrun.utils import logger
 
 import framework.utils.clients.iguazio.v4
 import framework.utils.singletons.k8s
+import schemas
+from schemas import ProjectOut, WorkflowSpec
 
 
 def resolve_client_default_kfp_image(

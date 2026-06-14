@@ -14,11 +14,11 @@
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 
 import framework.utils.helpers
 import framework.utils.singletons.db
+import schemas
 
 
 class AlertTemplates(
@@ -28,7 +28,7 @@ class AlertTemplates(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        alert_data: mlrun.common.schemas.AlertTemplate,
+        alert_data: schemas.AlertTemplate,
     ):
         alert_template = framework.utils.singletons.db.get_db().get_alert_template(
             session, name
@@ -46,14 +46,14 @@ class AlertTemplates(
     def list_alert_templates(
         self,
         session: sqlalchemy.orm.Session,
-    ) -> list[mlrun.common.schemas.AlertTemplate]:
+    ) -> list[schemas.AlertTemplate]:
         return framework.utils.singletons.db.get_db().list_alert_templates(session)
 
     def get_alert_template(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-    ) -> mlrun.common.schemas.AlertTemplate:
+    ) -> schemas.AlertTemplate:
         alert_template = framework.utils.singletons.db.get_db().get_alert_template(
             session, name
         )

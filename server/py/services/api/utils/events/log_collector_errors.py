@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mlrun.common.schemas
 from mlrun.utils import logger
 
+import schemas
 import services.api.utils.events.events_factory as events_factory
 
 
@@ -32,7 +32,7 @@ def publish_log_collector_failed(
     try:
         client = events_factory.EventsFactory.get_events_client()
         event = client.generate_log_collector_event(
-            action=mlrun.common.schemas.LogCollectorEventActions.failed,
+            action=schemas.LogCollectorEventActions.failed,
             error=error,
             run_uid=run_uid,
             project=project,

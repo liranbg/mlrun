@@ -19,12 +19,12 @@ import sqlalchemy.exc
 
 import mlrun
 import mlrun.common.db.dialects
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 from mlrun.utils import logger
 
 import framework.db.sqldb.sql_session
+import schemas
 import services.api.utils.events.events_factory as events_factory
 import services.api.utils.events.throttle as throttle
 
@@ -141,7 +141,7 @@ def publish_connection_failed(
     try:
         client = events_factory.EventsFactory.get_events_client()
         event = client.generate_db_connection_event(
-            action=mlrun.common.schemas.DBConnectionEventActions.failed,
+            action=schemas.DBConnectionEventActions.failed,
             error=error,
             error_category=category,
             error_code=error_code,

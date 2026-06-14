@@ -18,7 +18,6 @@ import fastapi
 import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
 import mlrun.utils
 from mlrun.utils import logger
 
@@ -26,18 +25,19 @@ import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.background_tasks
 import framework.utils.clients.chief
+import schemas
 
 router = fastapi.APIRouter()
 
 
 @router.get(
     "/projects/{project}/background-tasks/{name}",
-    response_model=mlrun.common.schemas.BackgroundTask,
+    response_model=schemas.BackgroundTask,
 )
 async def get_project_background_task(
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -48,10 +48,10 @@ async def get_project_background_task(
     # get endpoint)
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.project_background_task,
+            schemas.AuthorizationResourceTypes.project_background_task,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -65,7 +65,7 @@ async def get_project_background_task(
 
 @router.get(
     "/projects/{project}/background-tasks",
-    response_model=mlrun.common.schemas.BackgroundTaskList,
+    response_model=schemas.BackgroundTaskList,
 )
 async def list_project_background_tasks(
     project: str,
@@ -74,7 +74,7 @@ async def list_project_background_tasks(
     created_to: str | None = None,
     last_update_time_from: str | None = None,
     last_update_time_to: str | None = None,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -83,7 +83,7 @@ async def list_project_background_tasks(
 ):
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project,
-        mlrun.common.schemas.AuthorizationAction.read,
+        schemas.AuthorizationAction.read,
         auth_info,
     )
 
@@ -111,7 +111,7 @@ async def list_project_background_tasks(
     )
 
     background_tasks = await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.project_background_task,
+        schemas.AuthorizationResourceTypes.project_background_task,
         background_tasks,
         lambda background_task: (
             background_task.metadata.project,
@@ -120,23 +120,23 @@ async def list_project_background_tasks(
         auth_info,
     )
 
-    return mlrun.common.schemas.BackgroundTaskList(background_tasks=background_tasks)
+    return schemas.BackgroundTaskList(background_tasks=background_tasks)
 
 
 @router.get(
     "/background-tasks/{name}",
-    response_model=mlrun.common.schemas.BackgroundTask,
+    response_model=schemas.BackgroundTask,
 )
 async def get_internal_background_task(
     name: str,
     request: fastapi.Request,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info(
             "Requesting internal background task, re-routing to chief",
@@ -158,19 +158,19 @@ async def get_internal_background_task(
 
 @router.get(
     "/background-tasks",
-    response_model=mlrun.common.schemas.BackgroundTaskList,
+    response_model=schemas.BackgroundTaskList,
 )
 async def list_internal_background_tasks(
     request: fastapi.Request,
     name: str | None = None,
     kind: str | None = None,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info(
             "Requesting internal background tasks, re-routing to chief",
@@ -192,14 +192,14 @@ async def list_internal_background_tasks(
         except mlrun.errors.MLRunAccessDeniedError:
             pass
 
-    return mlrun.common.schemas.BackgroundTaskList(
+    return schemas.BackgroundTaskList(
         background_tasks=allowed_background_tasks
     )
 
 
 async def _authorize_get_background_task_request(
-    background_task: mlrun.common.schemas.BackgroundTask,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    background_task: schemas.BackgroundTask,
+    auth_info: schemas.AuthInfo,
 ):
     return
 
@@ -214,7 +214,7 @@ async def _authorize_get_background_task_request(
     # if background_task.metadata.project:
     #     return await services.api.utils.auth.verifier.AuthVerifier().query_project_permissions(
     #         background_task.metadata.project,
-    #         mlrun.common.schemas.AuthorizationAction.read,
+    #         schemas.AuthorizationAction.read,
     #         auth_info,
     #     )
 
@@ -222,8 +222,8 @@ async def _authorize_get_background_task_request(
     # igz_version = mlrun.mlconf.get_parsed_igz_version()
     # if igz_version and igz_version >= semver.VersionInfo.parse("3.7.0-b1"):
     #     return await services.api.utils.auth.verifier.AuthVerifier().query_resource_permissions(
-    #         mlrun.common.schemas.AuthorizationResourceTypes.background_task,
+    #         schemas.AuthorizationResourceTypes.background_task,
     #         background_task.metadata.name,
-    #         mlrun.common.schemas.AuthorizationAction.read,
+    #         schemas.AuthorizationAction.read,
     #         auth_info,
     #     )

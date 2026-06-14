@@ -17,13 +17,13 @@ import typing
 import mergedeep
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.runtimes
 import mlrun.utils.singleton
 
 import framework.utils.singletons.db
+import schemas
 import services.api.runtime_handlers
 
 
@@ -36,11 +36,11 @@ class RuntimeResources(
         kind: str | None = None,
         object_id: str | None = None,
         label_selector: str | None = None,
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ) -> typing.Union[
-        mlrun.common.schemas.RuntimeResourcesOutput,
-        mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-        mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+        schemas.RuntimeResourcesOutput,
+        schemas.GroupedByJobRuntimeResourcesOutput,
+        schemas.GroupedByProjectRuntimeResourcesOutput,
     ]:
         response = [] if group_by is None else {}
         kinds = mlrun.runtimes.RuntimeKinds.runtime_with_handlers()
@@ -54,7 +54,7 @@ class RuntimeResources(
             )
             if group_by is None:
                 response.append(
-                    mlrun.common.schemas.KindRuntimeResources(
+                    schemas.KindRuntimeResources(
                         kind=kind, resources=resources
                     )
                 )
@@ -64,13 +64,13 @@ class RuntimeResources(
 
     def filter_and_format_grouped_by_project_runtime_resources_output(
         self,
-        grouped_by_project_runtime_resources_output: mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+        grouped_by_project_runtime_resources_output: schemas.GroupedByProjectRuntimeResourcesOutput,
         allowed_projects: list[str],
-        group_by: mlrun.common.schemas.ListRuntimeResourcesGroupByField | None = None,
+        group_by: schemas.ListRuntimeResourcesGroupByField | None = None,
     ) -> typing.Union[
-        mlrun.common.schemas.RuntimeResourcesOutput,
-        mlrun.common.schemas.GroupedByJobRuntimeResourcesOutput,
-        mlrun.common.schemas.GroupedByProjectRuntimeResourcesOutput,
+        schemas.RuntimeResourcesOutput,
+        schemas.GroupedByJobRuntimeResourcesOutput,
+        schemas.GroupedByProjectRuntimeResourcesOutput,
     ]:
         runtime_resources_by_kind = {}
         for (
@@ -90,7 +90,7 @@ class RuntimeResources(
             )
             if group_by is None:
                 runtimes_resources_output.append(
-                    mlrun.common.schemas.KindRuntimeResources(
+                    schemas.KindRuntimeResources(
                         kind=kind, resources=resources
                     )
                 )

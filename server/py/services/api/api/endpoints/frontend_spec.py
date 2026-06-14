@@ -16,7 +16,6 @@
 import fastapi
 import semver
 
-import mlrun.common.schemas
 import mlrun.common.types
 import mlrun.runtimes
 import mlrun.runtimes.utils
@@ -27,6 +26,7 @@ from mlrun.platforms import is_iguazio_session_cookie
 import framework.api.deps
 import framework.utils.clients.iguazio.v3
 import framework.utils.runtimes.nuclio
+import schemas
 import services.api.utils.builder
 from framework.api.utils import get_allowed_path_prefixes_list
 
@@ -35,10 +35,10 @@ router = fastapi.APIRouter()
 
 @router.get(
     "/frontend-spec",
-    response_model=mlrun.common.schemas.FrontendSpec,
+    response_model=schemas.FrontendSpec,
 )
 def get_frontend_spec(
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -66,7 +66,7 @@ def get_frontend_spec(
     function_target_image_name_prefix_template = (
         config.httpdb.builder.function_target_image_name_prefix_template
     )
-    return mlrun.common.schemas.FrontendSpec(
+    return schemas.FrontendSpec(
         jobs_dashboard_url=jobs_dashboard_url,
         model_monitoring_dashboard_url=model_monitoring_dashboard_url,
         abortable_function_kinds=mlrun.runtimes.RuntimeKinds.abortable_runtimes(),
@@ -87,7 +87,7 @@ def get_frontend_spec(
         allowed_artifact_path_prefixes_list=get_allowed_path_prefixes_list(),
         ce=config.ce.to_dict(),
         internal_labels=config.internal_labels(),
-        artifact_limits=mlrun.common.schemas.ArtifactLimits(
+        artifact_limits=schemas.ArtifactLimits(
             max_chunk_size=config.artifacts.limits.max_chunk_size,
             max_preview_size=config.artifacts.limits.max_preview_size,
             max_download_size=config.artifacts.limits.max_download_size,
@@ -125,25 +125,25 @@ def _resolve_model_monitoring_dashboard_url(session: str) -> str | None:
     return None
 
 
-def _resolve_feature_flags() -> mlrun.common.schemas.FeatureFlags:
-    project_membership = mlrun.common.schemas.ProjectMembershipFeatureFlag.disabled
+def _resolve_feature_flags() -> schemas.FeatureFlags:
+    project_membership = schemas.ProjectMembershipFeatureFlag.disabled
     if mlrun.mlconf.httpdb.authorization.mode == "opa":
-        project_membership = mlrun.common.schemas.ProjectMembershipFeatureFlag.enabled
+        project_membership = schemas.ProjectMembershipFeatureFlag.enabled
     authentication = mlrun.common.types.AuthenticationMode(
         mlrun.mlconf.httpdb.authentication.mode
     )
-    nuclio_streams = mlrun.common.schemas.NuclioStreamsFeatureFlag.disabled
+    nuclio_streams = schemas.NuclioStreamsFeatureFlag.disabled
 
     if mlrun.mlconf.get_parsed_igz_version() and semver.VersionInfo.parse(
         framework.utils.runtimes.nuclio.resolve_nuclio_version()
     ) >= semver.VersionInfo.parse("1.7.8"):
-        nuclio_streams = mlrun.common.schemas.NuclioStreamsFeatureFlag.enabled
+        nuclio_streams = schemas.NuclioStreamsFeatureFlag.enabled
 
-    preemption_nodes = mlrun.common.schemas.PreemptionNodesFeatureFlag.disabled
+    preemption_nodes = schemas.PreemptionNodesFeatureFlag.disabled
     if mlrun.mlconf.is_preemption_nodes_configured():
-        preemption_nodes = mlrun.common.schemas.PreemptionNodesFeatureFlag.enabled
+        preemption_nodes = schemas.PreemptionNodesFeatureFlag.enabled
 
-    return mlrun.common.schemas.FeatureFlags(
+    return schemas.FeatureFlags(
         project_membership=project_membership,
         authentication=authentication,
         nuclio_streams=nuclio_streams,

@@ -21,7 +21,6 @@ import pytz
 import sqlalchemy.orm
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.utils
@@ -40,6 +39,7 @@ import framework.utils.periodic
 import framework.utils.projects.member as project_member
 import framework.utils.projects.remotes.leader
 import framework.utils.projects.remotes.nop_leader
+import schemas
 import services.api.crud
 
 
@@ -52,7 +52,7 @@ class Member(
         logger.info("Initializing projects follower", leader=self._leader_name)
         self._should_sync = (
             mlrun.mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
             and mlrun.mlconf.httpdb.clusterization.chief.feature_gates.project_sync
             == "enabled"
         )
@@ -104,11 +104,11 @@ class Member(
     def create_project(
         self,
         db_session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         commit_before_get: bool = False,
-    ) -> tuple[mlrun.common.schemas.Project | None, bool]:
+    ) -> tuple[schemas.Project | None, bool]:
         self._validate_project(project)
         if framework.utils.helpers.is_request_from_leader(
             auth_info.projects_role, leader_name=self._leader_name
@@ -132,10 +132,10 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.Project | None, bool]:
+    ) -> tuple[schemas.Project | None, bool]:
         self._validate_project(project)
         if framework.utils.helpers.is_request_from_leader(
             auth_info.projects_role, leader_name=self._leader_name
@@ -164,10 +164,10 @@ class Member(
         db_session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.Project | None, bool]:
+    ) -> tuple[schemas.Project | None, bool]:
         if framework.utils.helpers.is_request_from_leader(
             auth_info.projects_role, leader_name=self._leader_name
         ):
@@ -178,7 +178,7 @@ class Member(
             strategy = patch_mode.to_mergedeep_strategy()
             current_project_dict = current_project.dict(exclude_unset=True)
             mergedeep.merge(current_project_dict, project, strategy=strategy)
-            patched_project = mlrun.common.schemas.Project(**current_project_dict)
+            patched_project = schemas.Project(**current_project_dict)
             return self.store_project(
                 db_session,
                 name,
@@ -191,8 +191,8 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         background_task_name: str | None = None,
         model_monitoring_access_key: str | None = None,
@@ -222,10 +222,10 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         from_leader: bool = False,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
-    ) -> mlrun.common.schemas.ProjectOutput:
+    ) -> schemas.ProjectOutput:
         # by default, get project will use mlrun db to get/list the project.
         # from leader is relevant for cases where we want to get the project from the leader
         if from_leader:
@@ -243,21 +243,21 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         return self._leader_client.get_project_owner(self._sync_session, name)
 
     def list_projects(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         if (
             format_ == mlrun.common.formatters.ProjectFormat.leader
             and not framework.utils.helpers.is_request_from_leader(
@@ -282,12 +282,12 @@ class Member(
     async def list_project_summaries(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         return await services.api.crud.Projects().list_project_summaries(
             db_session, auth_info, owner, labels, state, names
         )
@@ -296,8 +296,8 @@ class Member(
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         return await services.api.crud.Projects().get_project_summary(
             db_session, name, auth_info
         )
@@ -366,7 +366,7 @@ class Member(
         for leader_project in leader_projects:
             if (
                 leader_project.status.state
-                not in mlrun.common.schemas.ProjectState.terminal_states()
+                not in schemas.ProjectState.terminal_states()
                 and leader_project.metadata.name not in db_projects_names
             ) or self._project_deletion_background_task_exists(
                 leader_project.metadata.name
@@ -420,7 +420,7 @@ class Member(
             try:
                 projects_to_archive[
                     project_to_archive
-                ].status.state = mlrun.common.schemas.ProjectState.archived
+                ].status.state = schemas.ProjectState.archived
                 services.api.crud.Projects().patch_project(
                     db_session,
                     project_to_archive,

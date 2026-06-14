@@ -26,7 +26,6 @@ import humanfriendly
 import igz_mgmt.schemas.manual_events
 import requests
 
-import mlrun.common.schemas
 import mlrun.common.types
 import mlrun.errors
 import mlrun.utils.helpers
@@ -34,6 +33,7 @@ from mlrun.utils import get_in, logger
 
 import framework.utils.helpers
 import framework.utils.projects.remotes.leader as project_leader
+import schemas
 from framework.utils.clients.iguazio.base import BaseAsyncClient, BaseClient
 
 
@@ -139,7 +139,7 @@ class Client(
         super().__init__(*args, **kwargs)
         retry_on_exception = (
             mlrun.mlconf.httpdb.projects.retry_leader_request_on_exception
-            == mlrun.common.schemas.HTTPSessionRetryMode.enabled.value
+            == schemas.HTTPSessionRetryMode.enabled.value
         )
         self._session = mlrun.utils.HTTPSessionWithRetry(
             retry_on_exception=retry_on_exception,
@@ -149,7 +149,7 @@ class Client(
         if retry_on_exception:
             self._retry_on_post_session = mlrun.utils.HTTPSessionWithRetry(
                 retry_on_exception=mlrun.mlconf.httpdb.projects.retry_leader_request_on_exception
-                == mlrun.common.schemas.HTTPSessionRetryMode.enabled.value,
+                == schemas.HTTPSessionRetryMode.enabled.value,
                 retry_on_post=True,
                 verbose=True,
             )
@@ -219,8 +219,8 @@ class Client(
     def create_project(
         self,
         session: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
     ) -> bool:
         self._logger.debug("Creating project in Iguazio", project=project.metadata.name)
@@ -237,8 +237,8 @@ class Client(
         self,
         session: str,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         self._logger.debug("Updating project in Iguazio", name=name)
         body = self._transform_mlrun_project_to_iguazio_project(project)
@@ -248,8 +248,8 @@ class Client(
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
         wait_for_completion: bool = True,
     ) -> bool:
         with self._job_cache.get_delete_lock(name):
@@ -305,7 +305,7 @@ class Client(
         session: str,
         updated_after: datetime.datetime | None = None,
         page_size: int | None = None,
-    ) -> tuple[list[mlrun.common.schemas.Project], datetime.datetime | None]:
+    ) -> tuple[list[schemas.Project], datetime.datetime | None]:
         project_names, latest_updated_at = self._list_project_names(
             session, updated_after, page_size
         )
@@ -315,16 +315,16 @@ class Client(
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         return self._get_project_from_iguazio(session, name)
 
     def get_project_owner(
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         response = self._get_project_from_iguazio_without_parsing(
             session, name, enrich_owner_access_key=True
         )
@@ -340,15 +340,15 @@ class Client(
                 f"Unable to enrich project owner for project {name},"
                 f" because project has no owner configured"
             )
-        return mlrun.common.schemas.ProjectOwner(
+        return schemas.ProjectOwner(
             username=owner_username,
             access_key=owner_access_key,
         )
 
     def format_as_leader_project(
-        self, project: mlrun.common.schemas.Project
-    ) -> mlrun.common.schemas.IguazioProject:
-        return mlrun.common.schemas.IguazioProject(
+        self, project: schemas.Project
+    ) -> schemas.IguazioProject:
+        return schemas.IguazioProject(
             data=self._transform_mlrun_project_to_iguazio_project(project)["data"]
         )
 
@@ -437,7 +437,7 @@ class Client(
 
     def _list_projects_data(
         self, session: str, project_names: list[str]
-    ) -> list[mlrun.common.schemas.Project]:
+    ) -> list[schemas.Project]:
         return [
             self._get_project_from_iguazio(session, project_name)
             for project_name in project_names
@@ -484,7 +484,7 @@ class Client(
         self,
         session: str,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
     ) -> str | None:
         self._logger.debug(
             "Deleting project in Iguazio",
@@ -492,8 +492,8 @@ class Client(
             deletion_strategy=deletion_strategy,
         )
         body = self._transform_mlrun_project_to_iguazio_project(
-            mlrun.common.schemas.Project(
-                metadata=mlrun.common.schemas.ProjectMetadata(name=name)
+            schemas.Project(
+                metadata=schemas.ProjectMetadata(name=name)
             )
         )
         headers = {
@@ -527,7 +527,7 @@ class Client(
         session: str,
         body: dict,
         **kwargs,
-    ) -> tuple[mlrun.common.schemas.Project, str]:
+    ) -> tuple[schemas.Project, str]:
         response = self._send_request_to_api(
             mlrun.common.types.HTTPMethod.POST,
             "projects",
@@ -548,7 +548,7 @@ class Client(
         name: str,
         body: dict,
         **kwargs,
-    ) -> mlrun.common.schemas.Project:
+    ) -> schemas.Project:
         response = self._send_request_to_api(
             mlrun.common.types.HTTPMethod.PUT,
             f"projects/__name__/{name}",
@@ -586,7 +586,7 @@ class Client(
 
     def _get_project_from_iguazio(
         self, session: str, name: str, include_owner_session: bool = False
-    ) -> mlrun.common.schemas.Project:
+    ) -> schemas.Project:
         response = self._get_project_from_iguazio_without_parsing(session, name)
         return self._transform_iguazio_project_to_mlrun_project(response.json()["data"])
 
@@ -641,7 +641,7 @@ class Client(
         self,
         response_headers: typing.Mapping[str, typing.Any],
         response_body: typing.Mapping[typing.Any, typing.Any],
-    ) -> mlrun.common.schemas.AuthInfo:
+    ) -> schemas.AuthInfo:
         """
         Extract and return AuthInfo from a valid session verification response.
         """
@@ -664,7 +664,7 @@ class Client(
         user_id = user_id_from_body or user_id
         group_ids = group_ids_from_body or group_ids
 
-        auth_info = mlrun.common.schemas.AuthInfo(
+        auth_info = schemas.AuthInfo(
             username=username,
             session=session,
             user_id=user_id,
@@ -680,25 +680,25 @@ class Client(
     def _resolve_params_from_response_headers(
         response_headers: typing.Mapping[str, typing.Any],
     ):
-        username = response_headers.get(mlrun.common.schemas.HeaderNames.remote_user)
+        username = response_headers.get(schemas.HeaderNames.remote_user)
         session = response_headers.get(
-            mlrun.common.schemas.HeaderNames.v3io_session_key
+            schemas.HeaderNames.v3io_session_key
         )
-        user_id = response_headers.get(mlrun.common.schemas.HeaderNames.user_id)
+        user_id = response_headers.get(schemas.HeaderNames.user_id)
 
-        gids = response_headers.get(mlrun.common.schemas.HeaderNames.user_group_ids, [])
+        gids = response_headers.get(schemas.HeaderNames.user_group_ids, [])
         # "x-user-group-ids" header is a comma separated list of group ids
         if gids and not isinstance(gids, list):
             gids = gids.split(",")
 
         planes = response_headers.get(
-            mlrun.common.schemas.HeaderNames.v3io_session_planes
+            schemas.HeaderNames.v3io_session_planes
         )
         if planes:
             planes = planes.split(",")
         planes = planes or []
         user_unix_id = None
-        x_unix_uid = response_headers.get(mlrun.common.schemas.HeaderNames.unix_uid)
+        x_unix_uid = response_headers.get(schemas.HeaderNames.unix_uid)
         # x-unix-uid may be 'Unknown' in case it is missing or in case of enrichment failures
         if x_unix_uid and x_unix_uid.lower() != "unknown":
             user_unix_id = int(x_unix_uid)
@@ -726,7 +726,7 @@ class Client(
 
     @staticmethod
     def _transform_mlrun_project_to_iguazio_project(
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
     ) -> dict:
         body = {
             "data": {
@@ -784,7 +784,7 @@ class Client(
 
     @staticmethod
     def _transform_mlrun_project_to_iguazio_mlrun_project_attribute(
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
     ):
         project_dict = project.dict(
             exclude_unset=True,
@@ -818,7 +818,7 @@ class Client(
     @staticmethod
     def _transform_iguazio_project_to_mlrun_project(
         iguazio_project,
-    ) -> mlrun.common.schemas.Project:
+    ) -> schemas.Project:
         mlrun_project_without_common_fields = json.loads(
             iguazio_project["attributes"].get("mlrun_project", "{}")
         )
@@ -826,16 +826,16 @@ class Client(
         mlrun_project_without_common_fields.setdefault("metadata", {})["name"] = (
             iguazio_project["attributes"]["name"]
         )
-        mlrun_project = mlrun.common.schemas.Project(
+        mlrun_project = schemas.Project(
             **mlrun_project_without_common_fields
         )
         mlrun_project.metadata.created = datetime.datetime.fromisoformat(
             iguazio_project["attributes"]["created_at"]
         )
-        mlrun_project.spec.desired_state = mlrun.common.schemas.ProjectDesiredState(
+        mlrun_project.spec.desired_state = schemas.ProjectDesiredState(
             iguazio_project["attributes"]["admin_status"]
         )
-        mlrun_project.status.state = mlrun.common.schemas.ProjectState(
+        mlrun_project.status.state = schemas.ProjectState(
             iguazio_project["attributes"]["operational_status"]
         )
         if iguazio_project["attributes"].get("description"):
@@ -875,7 +875,7 @@ class Client(
         ):
             session_cookie = f'j:{{"sid": "{session_cookie}"}}'
         if session_cookie:
-            cookies = kwargs.get(mlrun.common.schemas.HeaderNames.cookies, {})
+            cookies = kwargs.get(schemas.HeaderNames.cookies, {})
             # in case some dev using this function for some reason setting cookies manually through kwargs + have a
             # cookie with "session" key there + filling the session cookie - explode
             if "session" in cookies and cookies["session"] != session_cookie:
@@ -883,7 +883,7 @@ class Client(
                     "Session cookie already set"
                 )
             cookies["session"] = session_cookie
-            kwargs[mlrun.common.schemas.HeaderNames.cookies] = cookies
+            kwargs[schemas.HeaderNames.cookies] = cookies
         if kwargs.get("timeout") is None:
             kwargs["timeout"] = 20
         kwargs["headers"] = framework.utils.clients.helpers.enrich_headers(

@@ -16,12 +16,12 @@
 import iguazio
 import iguazio.schemas
 
-import mlrun.common.schemas
 import mlrun.errors
 from mlrun.utils import logger
 
 import framework.utils.clients.helpers as clients_helpers
 import framework.utils.clients.service_account_token as service_account_token
+import schemas
 import services.api.utils.events.base as base_events
 
 DB_MIGRATION_REQUIRED = "MLRun.DB.Migration.Required"
@@ -41,32 +41,32 @@ ERROR_DETAIL_LIMIT = 1024
 TRUNCATION_SUFFIX = "...[truncated]"
 
 DB_MIGRATION_EVENTS: dict[
-    mlrun.common.schemas.MigrationEventActions,
+    schemas.MigrationEventActions,
     tuple[str, str],
 ] = {
-    mlrun.common.schemas.MigrationEventActions.required: (
+    schemas.MigrationEventActions.required: (
         DB_MIGRATION_REQUIRED,
         "MLRun database migration required, functionality may be impaired",
     ),
-    mlrun.common.schemas.MigrationEventActions.started: (
+    schemas.MigrationEventActions.started: (
         DB_MIGRATION_STARTED,
         "MLRun database migration started",
     ),
-    mlrun.common.schemas.MigrationEventActions.completed: (
+    schemas.MigrationEventActions.completed: (
         DB_MIGRATION_COMPLETED,
         "MLRun database migration completed successfully",
     ),
-    mlrun.common.schemas.MigrationEventActions.failed: (
+    schemas.MigrationEventActions.failed: (
         DB_MIGRATION_FAILED,
         "MLRun database migration failed, functionality may be impaired",
     ),
 }
 
 DB_CONNECTION_EVENTS: dict[
-    mlrun.common.schemas.DBConnectionEventActions,
+    schemas.DBConnectionEventActions,
     tuple[str, str],
 ] = {
-    mlrun.common.schemas.DBConnectionEventActions.failed: (
+    schemas.DBConnectionEventActions.failed: (
         DB_CONNECTION_FAILED,
         "MLRun cannot connect to its database",
     ),
@@ -76,32 +76,32 @@ DB_CONNECTION_EVENTS: dict[
 # MLRun.LogCollector.Failed so the canonical event description stays in lockstep
 # across producer and catalog; per-operation context is attached to ``details``.
 LOG_COLLECTOR_EVENTS: dict[
-    mlrun.common.schemas.LogCollectorEventActions,
+    schemas.LogCollectorEventActions,
     tuple[str, str],
 ] = {
-    mlrun.common.schemas.LogCollectorEventActions.failed: (
+    schemas.LogCollectorEventActions.failed: (
         LOG_COLLECTOR_FAILED,
         "MLRun log collector failed to retrieve logs",
     ),
 }
 
 PROJECT_LIFECYCLE_EVENTS: dict[
-    mlrun.common.schemas.ProjectLifecycleEventActions,
+    schemas.ProjectLifecycleEventActions,
     tuple[str, str],
 ] = {
-    mlrun.common.schemas.ProjectLifecycleEventActions.creation_succeeded: (
+    schemas.ProjectLifecycleEventActions.creation_succeeded: (
         PROJECT_CREATION_SUCCEEDED,
         "Project was successfully created",
     ),
-    mlrun.common.schemas.ProjectLifecycleEventActions.creation_failed: (
+    schemas.ProjectLifecycleEventActions.creation_failed: (
         PROJECT_CREATION_FAILED,
         "Project creation failed",
     ),
-    mlrun.common.schemas.ProjectLifecycleEventActions.deletion_succeeded: (
+    schemas.ProjectLifecycleEventActions.deletion_succeeded: (
         PROJECT_DELETION_SUCCEEDED,
         "Project was successfully deleted",
     ),
-    mlrun.common.schemas.ProjectLifecycleEventActions.deletion_failed: (
+    schemas.ProjectLifecycleEventActions.deletion_failed: (
         PROJECT_DELETION_FAILED,
         "Project deletion failed",
     ),
@@ -148,7 +148,7 @@ class Client(base_events.BaseEventClient):
 
     def generate_db_migration_event(
         self,
-        action: mlrun.common.schemas.MigrationEventActions,
+        action: schemas.MigrationEventActions,
         error: BaseException | str | None = None,
         duration_seconds: float | None = None,
         scope: list[str] | None = None,
@@ -171,7 +171,7 @@ class Client(base_events.BaseEventClient):
         if duration_seconds is not None:
             details["duration_seconds"] = round(float(duration_seconds), 3)
 
-        if action == mlrun.common.schemas.MigrationEventActions.failed:
+        if action == schemas.MigrationEventActions.failed:
             self._record_error(details, error)
 
         return iguazio.schemas.EventActivationSpec(
@@ -183,7 +183,7 @@ class Client(base_events.BaseEventClient):
 
     def generate_db_connection_event(
         self,
-        action: mlrun.common.schemas.DBConnectionEventActions,
+        action: schemas.DBConnectionEventActions,
         error: BaseException | str | None = None,
         error_category: str | None = None,
         error_code: int | str | None = None,
@@ -215,7 +215,7 @@ class Client(base_events.BaseEventClient):
 
     def generate_log_collector_event(
         self,
-        action: mlrun.common.schemas.LogCollectorEventActions,
+        action: schemas.LogCollectorEventActions,
         error: BaseException | str | None = None,
         run_uid: str | None = None,
         project: str | None = None,
@@ -244,7 +244,7 @@ class Client(base_events.BaseEventClient):
 
     def generate_project_lifecycle_event(
         self,
-        action: mlrun.common.schemas.ProjectLifecycleEventActions,
+        action: schemas.ProjectLifecycleEventActions,
         project_name: str,
         actor: str | None = None,
         error: BaseException | str | None = None,
@@ -261,8 +261,8 @@ class Client(base_events.BaseEventClient):
             details["actor"] = actor
 
         if action in (
-            mlrun.common.schemas.ProjectLifecycleEventActions.creation_failed,
-            mlrun.common.schemas.ProjectLifecycleEventActions.deletion_failed,
+            schemas.ProjectLifecycleEventActions.creation_failed,
+            schemas.ProjectLifecycleEventActions.deletion_failed,
         ):
             self._record_error(details, error)
 
@@ -277,7 +277,7 @@ class Client(base_events.BaseEventClient):
         self,
         username: str,
         secret_name: str,
-        action: mlrun.common.schemas.AuthSecretEventActions,
+        action: schemas.AuthSecretEventActions,
     ):
         # TODO: map v3 auth-secret events onto the v4 catalog (separate change).
         pass
@@ -287,7 +287,7 @@ class Client(base_events.BaseEventClient):
         project: str,
         secret_name: str,
         secret_keys: list[str] | None = None,
-        action: mlrun.common.schemas.SecretEventActions = mlrun.common.schemas.SecretEventActions.created,
+        action: schemas.SecretEventActions = schemas.SecretEventActions.created,
     ):
         # TODO: map v3 project-secret events onto the v4 catalog (separate change).
         pass

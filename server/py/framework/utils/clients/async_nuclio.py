@@ -19,7 +19,6 @@ from http import HTTPStatus
 import aiohttp
 
 import mlrun.common.constants as mlrun_constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils
 import mlrun.utils.thread
@@ -27,6 +26,7 @@ from mlrun.common.helpers import generate_api_gateway_name
 from mlrun.utils import logger
 
 import framework.utils.clients.helpers
+import schemas
 
 NUCLIO_API_SESSIONS_ENDPOINT = "/api/sessions/"
 NUCLIO_API_GATEWAYS_ENDPOINT_TEMPLATE = "/api/api_gateways/{api_gateway}"
@@ -39,7 +39,7 @@ NUCLIO_PROJECT_NAME_HEADER = "X-Nuclio-Project-Name"
 
 
 class Client:
-    def __init__(self, auth_info: mlrun.common.schemas.AuthInfo):
+    def __init__(self, auth_info: schemas.AuthInfo):
         self._logger = logger.get_child("nuclio-client")
         self._nuclio_dashboard_url = mlrun.mlconf.nuclio_dashboard_url
         self._sessions = mlrun.utils.thread.ThreadLocalClient(
@@ -65,7 +65,7 @@ class Client:
 
     async def list_api_gateways(
         self, project_name=None
-    ) -> dict[str, mlrun.common.schemas.APIGateway]:
+    ) -> dict[str, schemas.APIGateway]:
         headers = {}
 
         if project_name:
@@ -78,7 +78,7 @@ class Client:
         )
         parsed_api_gateways = {}
         for name, gw in api_gateways.items():
-            parsed_api_gateways[name] = mlrun.common.schemas.APIGateway.parse_obj(
+            parsed_api_gateways[name] = schemas.APIGateway.parse_obj(
                 gw
             ).replace_nuclio_names_with_mlrun_names()
         return parsed_api_gateways
@@ -103,14 +103,14 @@ class Client:
             path=NUCLIO_API_GATEWAYS_ENDPOINT_TEMPLATE.format(api_gateway=name),
             headers=headers,
         )
-        return mlrun.common.schemas.APIGateway.parse_obj(
+        return schemas.APIGateway.parse_obj(
             api_gateway
         ).replace_nuclio_names_with_mlrun_names()
 
     async def store_api_gateway(
         self,
         project_name: str,
-        api_gateway: mlrun.common.schemas.APIGateway,
+        api_gateway: schemas.APIGateway,
         create: bool = False,
     ):
         headers = {}
@@ -215,7 +215,7 @@ class Client:
         return mlrun.utils.AsyncClientWithRetry(
             raise_for_status=False,
             retry_on_exception=mlrun.mlconf.httpdb.projects.retry_leader_request_on_exception
-            == mlrun.common.schemas.HTTPSessionRetryMode.enabled.value,
+            == schemas.HTTPSessionRetryMode.enabled.value,
             logger=logger,
         )
 
@@ -294,8 +294,8 @@ class Client:
     def _enrich_nuclio_api_gateway(
         self,
         project_name: str,
-        api_gateway: mlrun.common.schemas.APIGateway,
-    ) -> mlrun.common.schemas.APIGateway:
+        api_gateway: schemas.APIGateway,
+    ) -> schemas.APIGateway:
         self._set_iguazio_labels(api_gateway, project_name)
         api_gateway.enrich_mlrun_names()
         return api_gateway

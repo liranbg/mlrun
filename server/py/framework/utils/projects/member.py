@@ -18,12 +18,12 @@ import datetime
 import sqlalchemy.orm
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.k8s_utils
 import mlrun.utils.singleton
 
 import framework.utils.auth.verifier
 import framework.utils.project_formats
+import schemas
 import services.api.crud
 
 
@@ -45,7 +45,7 @@ class Member(abc.ABC):
         db_session: sqlalchemy.orm.Session,
         name: str,
         wait_for_completion: bool = True,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         try:
             # Using minimal format to access spec.owner for OPA cache population
@@ -81,11 +81,11 @@ class Member(abc.ABC):
     def create_project(
         self,
         db_session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         commit_before_get: bool = False,
-    ) -> tuple[mlrun.common.schemas.Project | None, bool]:
+    ) -> tuple[schemas.Project | None, bool]:
         pass
 
     @abc.abstractmethod
@@ -93,10 +93,10 @@ class Member(abc.ABC):
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.Project | None, bool]:
+    ) -> tuple[schemas.Project | None, bool]:
         pass
 
     @abc.abstractmethod
@@ -105,10 +105,10 @@ class Member(abc.ABC):
         db_session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
-    ) -> tuple[mlrun.common.schemas.Project, bool]:
+    ) -> tuple[schemas.Project, bool]:
         pass
 
     @abc.abstractmethod
@@ -116,8 +116,8 @@ class Member(abc.ABC):
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
         background_task_name: str | None = None,
         model_monitoring_access_key: str | None = None,
@@ -129,24 +129,24 @@ class Member(abc.ABC):
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         from_leader: bool = False,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
-    ) -> mlrun.common.schemas.ProjectOutput:
+    ) -> schemas.ProjectOutput:
         pass
 
     @abc.abstractmethod
     def list_projects(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         pass
 
     @abc.abstractmethod
@@ -154,20 +154,20 @@ class Member(abc.ABC):
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         pass
 
     @abc.abstractmethod
     async def list_project_summaries(
         self,
         db_session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         pass
 
     @abc.abstractmethod
@@ -175,8 +175,8 @@ class Member(abc.ABC):
         self,
         db_session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         pass
 
     async def post_delete_project(
@@ -185,12 +185,12 @@ class Member(abc.ABC):
     ):
         if (
             mlrun.mlconf.log_collector.mode
-            != mlrun.common.schemas.LogsCollectorMode.legacy
+            != schemas.LogsCollectorMode.legacy
         ):
             await services.api.crud.Logs().stop_logs_for_project(project_name)
             await services.api.crud.Logs().delete_project_logs(project_name)
 
-    def _validate_project(self, project: mlrun.common.schemas.Project):
+    def _validate_project(self, project: schemas.Project):
         mlrun.projects.ProjectMetadata.validate_project_name(project.metadata.name)
         mlrun.projects.ProjectMetadata.validate_project_labels(project.metadata.labels)
         mlrun.k8s_utils.validate_node_selectors(

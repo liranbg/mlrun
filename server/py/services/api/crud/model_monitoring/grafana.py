@@ -17,19 +17,19 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 import mlrun.common.formatters
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.grafana as grafana_schemas
 from mlrun.errors import MLRunBadRequestError
 from mlrun.utils import logger, run_in_threadpool
 
 import framework.utils.auth.verifier
+import schemas
+import schemas.model_monitoring.grafana as grafana_schemas
 import services.api.crud
 from framework.utils.singletons.project_member import get_project_member
 
 
 def grafana_list_projects(
     query_parameters: dict[str, str],
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     db_session: Session,
 ) -> list[str]:
     """
@@ -53,7 +53,7 @@ def grafana_list_projects(
 
 async def grafana_list_endpoints_uids(
     query_parameters: dict[str, str],
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     db_session: Session,
 ) -> list[str]:
     """
@@ -71,7 +71,7 @@ async def grafana_list_endpoints_uids(
     if project:
         await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
             project,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     endpoint_list = await run_in_threadpool(
@@ -86,7 +86,7 @@ async def grafana_list_endpoints_uids(
 
 async def grafana_list_metrics(
     query_parameters: dict[str, str],
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     db_session: Session,
 ) -> list[str]:
     """
@@ -106,10 +106,10 @@ async def grafana_list_metrics(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.model_endpoint,
+            schemas.AuthorizationResourceTypes.model_endpoint,
             project,
             endpoint_id,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -127,14 +127,14 @@ async def grafana_list_metrics(
 
 async def grafana_list_endpoints(
     query_parameters: dict[str, str],
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     db_session: Session,
 ) -> list[grafana_schemas.GrafanaTable]:
     project = query_parameters.get("project")
     if project:
         await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
             project,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
 
@@ -167,7 +167,7 @@ async def grafana_list_endpoints(
     )
 
     allowed_endpoints = await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.model_endpoint,
+        schemas.AuthorizationResourceTypes.model_endpoint,
         endpoint_list.endpoints,
         lambda _endpoint: (
             _endpoint.metadata.project,
@@ -182,7 +182,7 @@ async def grafana_list_endpoints(
         if (
             filter_router
             and endpoint.status.endpoint_type
-            == mlrun.common.schemas.model_monitoring.EndpointType.ROUTER
+            == schemas.model_monitoring.EndpointType.ROUTER
         ):
             continue
         row = [

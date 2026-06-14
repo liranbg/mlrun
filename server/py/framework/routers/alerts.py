@@ -18,29 +18,28 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
-
 import framework.service
 import framework.utils.singletons.project_member
+import schemas
 from framework.api import deps
 
 router = APIRouter(prefix="/projects/{project}/alerts")
 
 
-@router.put("/{name}", response_model=mlrun.common.schemas.AlertConfig)
+@router.put("/{name}", response_model=schemas.AlertConfig)
 @inject
 async def store_alert(
     request: Request,
     project: str,
     name: str,
-    alert_data: mlrun.common.schemas.AlertConfig,
+    alert_data: schemas.AlertConfig,
     force_reset: bool = False,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertConfig:
+) -> schemas.AlertConfig:
     return await service.handle_request(
         "store_alert",
         request,
@@ -55,7 +54,7 @@ async def store_alert(
 
 @router.get(
     "/{name}",
-    response_model=mlrun.common.schemas.AlertConfig,
+    response_model=schemas.AlertConfig,
     response_model_exclude_none=True,
 )
 @inject
@@ -63,12 +62,12 @@ async def get_alert(
     request: Request,
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertConfig:
+) -> schemas.AlertConfig:
     return await service.handle_request(
         "get_alert",
         request,
@@ -81,7 +80,7 @@ async def get_alert(
 
 @router.get(
     "",
-    response_model=dict[str, list[mlrun.common.schemas.AlertConfig]],
+    response_model=dict[str, list[schemas.AlertConfig]],
     response_model_exclude_none=True,
 )
 @inject
@@ -90,12 +89,12 @@ async def list_alerts(
     project: str,
     page_size: int = Query(None, alias="page-size", gt=0),
     offset: int = Query(None),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> list[mlrun.common.schemas.AlertConfig]:
+) -> list[schemas.AlertConfig]:
     return await service.handle_request(
         "list_alerts",
         request,
@@ -113,7 +112,7 @@ async def delete_alert(
     request: Request,
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
@@ -134,7 +133,7 @@ async def delete_alert(
 async def delete_alerts(
     request: Request,
     project: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
@@ -155,7 +154,7 @@ async def reset_alert(
     request: Request,
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]

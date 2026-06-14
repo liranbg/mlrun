@@ -13,29 +13,48 @@
 # limitations under the License.
 
 import http
+import re
+import typing
 
 import fastapi
 import fastapi.concurrency
+import pydantic
 import sqlalchemy.orm
 
 import mlrun.common.constants
-import mlrun.common.schemas
 from mlrun.utils.helpers import tag_name_regex_as_string
 
 import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud.tags
+
+# ML-12736: tag_name_regex_as_string() builds a look-ahead regex; pydantic v2's default (Rust)
+# regex engine does not support look-around, so the tag name is validated with Python's re via
+# an AfterValidator instead of a FastAPI ``pattern``/``regex`` path constraint.
+_TAG_NAME_REGEX = re.compile(tag_name_regex_as_string())
+
+
+def _validate_tag_name(tag: str) -> str:
+    if not _TAG_NAME_REGEX.match(tag):
+        raise ValueError(f"invalid tag name: {tag}")
+    return tag
+
+
+TagNamePath = typing.Annotated[
+    str, fastapi.Path(), pydantic.AfterValidator(_validate_tag_name)
+]
 
 router = fastapi.APIRouter(prefix="/projects/{project}/tags")
 
 
-@router.post("/{tag}", response_model=mlrun.common.schemas.Tag)
+@router.post("/{tag}", response_model=schemas.Tag)
 async def overwrite_object_tags_with_tag(
     project: str,
-    tag: str = fastapi.Path(..., regex=tag_name_regex_as_string()),
-    tag_objects: mlrun.common.schemas.TagObjects = fastapi.Body(...),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    tag: TagNamePath,
+    tag_objects: schemas.TagObjects = fastapi.Body(...),
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -52,11 +71,11 @@ async def overwrite_object_tags_with_tag(
     # check permission per object type
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            getattr(mlrun.common.schemas.AuthorizationResourceTypes, tag_objects.kind),
+            getattr(schemas.AuthorizationResourceTypes, tag_objects.kind),
             project,
             resource_name="",
             # not actually overwriting objects, just overwriting the objects tags
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )
@@ -70,15 +89,15 @@ async def overwrite_object_tags_with_tag(
         tag,
         tag_objects,
     )
-    return mlrun.common.schemas.Tag(name=tag, project=project)
+    return schemas.Tag(name=tag, project=project)
 
 
-@router.put("/{tag}", response_model=mlrun.common.schemas.Tag)
+@router.put("/{tag}", response_model=schemas.Tag)
 async def append_tag_to_objects(
     project: str,
-    tag: str = fastapi.Path(..., regex=tag_name_regex_as_string()),
-    tag_objects: mlrun.common.schemas.TagObjects = fastapi.Body(...),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    tag: TagNamePath,
+    tag_objects: schemas.TagObjects = fastapi.Body(...),
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -94,10 +113,10 @@ async def append_tag_to_objects(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            getattr(mlrun.common.schemas.AuthorizationResourceTypes, tag_objects.kind),
+            getattr(schemas.AuthorizationResourceTypes, tag_objects.kind),
             project,
             resource_name="",
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )
@@ -111,15 +130,15 @@ async def append_tag_to_objects(
         tag,
         tag_objects,
     )
-    return mlrun.common.schemas.Tag(name=tag, project=project)
+    return schemas.Tag(name=tag, project=project)
 
 
 @router.delete("/{tag}", status_code=http.HTTPStatus.NO_CONTENT.value)
 async def delete_tag_from_objects(
     project: str,
     tag: str,
-    tag_objects: mlrun.common.schemas.TagObjects,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    tag_objects: schemas.TagObjects,
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -135,11 +154,11 @@ async def delete_tag_from_objects(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            getattr(mlrun.common.schemas.AuthorizationResourceTypes, tag_objects.kind),
+            getattr(schemas.AuthorizationResourceTypes, tag_objects.kind),
             project,
             resource_name="",
             # not actually deleting objects, just deleting the objects tags
-            action=mlrun.common.schemas.AuthorizationAction.update,
+            action=schemas.AuthorizationAction.update,
             auth_info=auth_info,
         )
     )

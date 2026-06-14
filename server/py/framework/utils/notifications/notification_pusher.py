@@ -22,7 +22,6 @@ import typing
 import sqlalchemy.orm
 from kubernetes.client import ApiException
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.lists
 import mlrun.model
@@ -39,6 +38,7 @@ from mlrun.utils.notifications.notification_pusher import (
 import framework.api.utils
 import framework.constants
 import framework.utils.singletons.k8s
+import schemas
 
 
 class RunNotificationPusher(NotificationPusher):
@@ -118,8 +118,8 @@ class RunNotificationPusher(NotificationPusher):
 class AlertNotificationPusher(_NotificationPusherBase):
     def push(
         self,
-        alert: mlrun.common.schemas.AlertConfig,
-        event_data: mlrun.common.schemas.Event,
+        alert: schemas.AlertConfig,
+        event_data: schemas.Event,
         activation_id: int | None = None,
         activation_time: datetime.datetime | None = None,
     ):
@@ -191,7 +191,7 @@ class AlertNotificationPusher(_NotificationPusherBase):
         self,
         activation_id: int,
         activation_time: datetime.datetime,
-        alert: mlrun.common.schemas.AlertConfig,
+        alert: schemas.AlertConfig,
     ):
         normalized_activation_time = mlrun.utils.helpers.datetime_to_mysql_ts(
             activation_time
@@ -207,9 +207,9 @@ class AlertNotificationPusher(_NotificationPusherBase):
     async def _push_notification_async(
         self,
         notification: base.NotificationBase,
-        alert: mlrun.common.schemas.AlertConfig,
-        notification_object: mlrun.common.schemas.Notification,
-        event_data: mlrun.common.schemas.Event,
+        alert: schemas.AlertConfig,
+        notification_object: schemas.Notification,
+        event_data: schemas.Event,
     ):
         message, severity = self._prepare_notification_args(
             alert, notification_object, event_data
@@ -233,7 +233,7 @@ class AlertNotificationPusher(_NotificationPusherBase):
                 alert.id,
                 alert.project,
                 notification_object,
-                status=mlrun.common.schemas.NotificationStatus.SENT,
+                status=schemas.NotificationStatus.SENT,
                 sent_time=datetime.datetime.now(tz=datetime.UTC),
             )
         except Exception as exc:
@@ -248,16 +248,16 @@ class AlertNotificationPusher(_NotificationPusherBase):
                 alert.id,
                 alert.project,
                 notification_object,
-                status=mlrun.common.schemas.NotificationStatus.ERROR,
+                status=schemas.NotificationStatus.ERROR,
                 reason=str(exc),
             )
             raise exc
 
     @staticmethod
     def _prepare_notification_args(
-        alert: mlrun.common.schemas.AlertConfig,
-        notification_object: mlrun.common.schemas.Notification,
-        event_data: mlrun.common.schemas.Event,
+        alert: schemas.AlertConfig,
+        notification_object: schemas.Notification,
+        event_data: schemas.Event,
     ):
         message = (
             f": {notification_object.message}"
@@ -270,8 +270,8 @@ class AlertNotificationPusher(_NotificationPusherBase):
 
     @staticmethod
     def _prepare_notification_states(
-        notifications: list[mlrun.common.schemas.AlertNotification],
-    ) -> list[mlrun.common.schemas.NotificationState]:
+        notifications: list[schemas.AlertNotification],
+    ) -> list[schemas.NotificationState]:
         """
         Processes a list of alert notifications to construct a list of NotificationState objects.
 
@@ -324,10 +324,10 @@ class AlertNotificationPusher(_NotificationPusherBase):
                 error_message = ""
 
             notification_states.append(
-                mlrun.common.schemas.NotificationState(
+                schemas.NotificationState(
                     kind=kind,
                     err=error_message,
-                    summary=mlrun.common.schemas.NotificationSummary(
+                    summary=schemas.NotificationSummary(
                         failed=failed_count,
                         succeeded=success_count,
                     ),
@@ -340,7 +340,7 @@ class AlertNotificationPusher(_NotificationPusherBase):
     def _update_notification_status(
         alert_id: int,
         project: str,
-        notification: mlrun.common.schemas.Notification,
+        notification: schemas.Notification,
         status: str | None = None,
         sent_time: datetime.datetime | None = None,
         reason: str | None = None,
@@ -350,7 +350,7 @@ class AlertNotificationPusher(_NotificationPusherBase):
         notification.sent_time = sent_time or notification.sent_time
 
         # fill reason only if failed
-        if notification.status == mlrun.common.schemas.NotificationStatus.ERROR:
+        if notification.status == schemas.NotificationStatus.ERROR:
             notification.reason = reason or notification.reason
 
             # limit reason to a max of 255 characters (for db reasons) but also for human readability reasons.
@@ -374,7 +374,7 @@ class KFPNotificationPusher(NotificationPusher):
         db_session: sqlalchemy.orm.Session,
         project: str,
         workflow_id: str,
-        notifications: list[mlrun.common.schemas.Notification],
+        notifications: list[schemas.Notification],
         default_params: dict | None = None,
     ):
         self._project = project
@@ -466,7 +466,7 @@ class KFPNotificationPusher(NotificationPusher):
     def _push_workflow_notification_sync(
         self,
         notification: base.NotificationBase,
-        notification_object: mlrun.common.schemas.Notification,
+        notification_object: schemas.Notification,
         runs: typing.Union[mlrun.lists.RunList, list] | None = None,
     ):
         message, severity = self._prepare_workflow_notification_args(
@@ -499,7 +499,7 @@ class KFPNotificationPusher(NotificationPusher):
     async def _push_workflow_notification_async(
         self,
         notification: base.NotificationBase,
-        notification_object: mlrun.common.schemas.Notification,
+        notification_object: schemas.Notification,
         runs: typing.Union[mlrun.lists.RunList, list] | None = None,
     ):
         message, severity = self._prepare_workflow_notification_args(
@@ -532,7 +532,7 @@ class KFPNotificationPusher(NotificationPusher):
             raise exc
 
     def _prepare_workflow_notification_args(
-        self, notification_object: mlrun.common.schemas.Notification
+        self, notification_object: schemas.Notification
     ):
         custom_message = (
             f": {notification_object.message}" if notification_object.message else ""
@@ -540,6 +540,6 @@ class KFPNotificationPusher(NotificationPusher):
         message = f" (workflow: {self._workflow_id}){custom_message}"
         severity = (
             notification_object.severity
-            or mlrun.common.schemas.NotificationSeverity.INFO
+            or schemas.NotificationSeverity.INFO
         )
         return message, severity

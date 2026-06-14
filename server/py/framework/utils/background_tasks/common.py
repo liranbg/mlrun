@@ -14,7 +14,9 @@
 
 import datetime
 
-import mlrun.common.schemas
+import mlrun
+
+import schemas
 
 
 def background_task_exceeded_timeout(start_time, timeout, task_state) -> bool:
@@ -24,7 +26,7 @@ def background_task_exceeded_timeout(start_time, timeout, task_state) -> bool:
     # and we intend to verify it as if timeout mode was enabled
     if (
         timeout
-        and task_state not in mlrun.common.schemas.BackgroundTaskState.terminal_states()
+        and task_state not in schemas.BackgroundTaskState.terminal_states()
         and datetime.datetime.utcnow()
         > datetime.timedelta(seconds=int(timeout)) + start_time
     ):

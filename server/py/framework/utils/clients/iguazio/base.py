@@ -22,11 +22,12 @@ import aiohttp
 import fastapi
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 import mlrun.utils.thread
 from mlrun.utils import logger
+
+import schemas
 
 
 class BaseClient(ABC, metaclass=mlrun.utils.singleton.AbstractSingleton):
@@ -57,7 +58,7 @@ class BaseClient(ABC, metaclass=mlrun.utils.singleton.AbstractSingleton):
         self,
         response_headers: typing.Mapping[str, typing.Any],
         response_body: typing.Mapping[typing.Any, typing.Any],
-    ) -> mlrun.common.schemas.AuthInfo:
+    ) -> schemas.AuthInfo:
         """
         Extract and return AuthInfo from a valid session verification response.
         """
@@ -172,7 +173,7 @@ class BaseAsyncClient(BaseClient):
 
     async def verify_request_session(
         self, request: fastapi.Request
-    ) -> mlrun.common.schemas.AuthInfo:
+    ) -> schemas.AuthInfo:
         """
         Proxy the request to one of the session verification endpoints (which will verify the session of the request)
         """
@@ -181,17 +182,17 @@ class BaseAsyncClient(BaseClient):
         #  async client and call the method as async. As a result, this method will not be part of the base client
         #  and should be implemented separately in the Iguaziov4 client.
         headers = {
-            mlrun.common.schemas.HeaderNames.authorization: request.headers.get(
-                mlrun.common.schemas.HeaderNames.authorization
+            schemas.HeaderNames.authorization: request.headers.get(
+                schemas.HeaderNames.authorization
             ),
-            mlrun.common.schemas.HeaderNames.cookie: request.headers.get(
-                mlrun.common.schemas.HeaderNames.cookie, ""
+            schemas.HeaderNames.cookie: request.headers.get(
+                schemas.HeaderNames.cookie, ""
             ),
-            mlrun.common.schemas.HeaderNames.x_request_id: getattr(
+            schemas.HeaderNames.x_request_id: getattr(
                 request.state, "request_id", ""
             ),
-            mlrun.common.schemas.HeaderNames.igz_authenticator_kind: request.headers.get(
-                mlrun.common.schemas.HeaderNames.igz_authenticator_kind, ""
+            schemas.HeaderNames.igz_authenticator_kind: request.headers.get(
+                schemas.HeaderNames.igz_authenticator_kind, ""
             ),
         }
         async with (
@@ -281,6 +282,6 @@ class BaseAsyncClient(BaseClient):
     def _get_new_async_session():
         return mlrun.utils.AsyncClientWithRetry(
             retry_on_exception=mlrun.mlconf.httpdb.projects.retry_leader_request_on_exception
-            == mlrun.common.schemas.HTTPSessionRetryMode.enabled.value,
+            == schemas.HTTPSessionRetryMode.enabled.value,
             logger=logger,
         )

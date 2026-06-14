@@ -18,11 +18,11 @@ import typing
 import aiohttp
 import fastapi
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 
 import framework.utils.clients.messaging
+import schemas
 
 
 # we were thinking to simply use httpdb, but decided to have a separated class for simplicity for now until
@@ -188,7 +188,7 @@ class Client(
 
     async def get_clusterization_spec(
         self, return_fastapi_response: bool = True, raise_on_failure: bool = False
-    ) -> typing.Union[fastapi.Response, mlrun.common.schemas.ClusterizationSpec]:
+    ) -> typing.Union[fastapi.Response, schemas.ClusterizationSpec]:
         """
         This method is used both for proxying requests from worker to chief and for aligning the worker state
         with the clusterization spec brought from the chief
@@ -203,7 +203,7 @@ class Client(
                     chief_response
                 )
 
-            return mlrun.common.schemas.ClusterizationSpec(
+            return schemas.ClusterizationSpec(
                 **(await chief_response.json())
             )
 
@@ -229,7 +229,7 @@ class Client(
 
     async def store_alert(
         self, project: str, name: str, request: fastapi.Request, json: dict
-    ) -> typing.Union[fastapi.Response, mlrun.common.schemas.AlertConfig]:
+    ) -> typing.Union[fastapi.Response, schemas.AlertConfig]:
         """
         Alerts are running only on chief
         """

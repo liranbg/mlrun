@@ -15,7 +15,7 @@
 import abc
 import typing
 
-import mlrun.common.schemas
+import schemas
 
 
 class Provider(abc.ABC):
@@ -23,8 +23,8 @@ class Provider(abc.ABC):
     async def query_permissions(
         self,
         resource: str,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
         raise_on_forbidden: bool = True,
     ) -> bool:
         pass
@@ -34,13 +34,13 @@ class Provider(abc.ABC):
         self,
         resources: list,
         opa_resource_extractor: typing.Callable,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
     ) -> list:
         pass
 
     @abc.abstractmethod
     def add_allowed_project_for_owner(
-        self, project_name: str, auth_info: mlrun.common.schemas.AuthInfo
+        self, project_name: str, auth_info: schemas.AuthInfo
     ):
         pass

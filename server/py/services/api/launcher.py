@@ -21,7 +21,6 @@ from dependency_injector import containers, providers
 import mlrun.auth.utils
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas.schedule
 import mlrun.config
 import mlrun.execution
 import mlrun.k8s_utils
@@ -42,6 +41,7 @@ import framework.api.utils
 import framework.db.session
 import framework.utils.helpers
 import framework.utils.singletons.db
+import schemas.schedule
 import services.api.crud
 import services.api.runtime_handlers
 import services.api.utils.helpers
@@ -54,7 +54,7 @@ class ServerSideLauncher(launcher.BaseLauncher):
     def __init__(
         self,
         local: bool = False,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -79,7 +79,7 @@ class ServerSideLauncher(launcher.BaseLauncher):
         artifact_path: str | None = "",
         output_path: str | None = "",
         watch: bool | None = True,
-        schedule: Union[str, mlrun.common.schemas.schedule.ScheduleCronTrigger]
+        schedule: Union[str, schemas.schedule.ScheduleCronTrigger]
         | None = None,
         hyperparams: dict[str, list] | None = None,
         hyper_param_options: mlrun.model.HyperParamOptions | None = None,
@@ -728,7 +728,7 @@ class ServerSideLauncher(launcher.BaseLauncher):
         # Tolerate missing auth tokens for scheduled runs so the run record is still created
         # and the failure is visible to the user.
         schedule_name = (object.metadata.labels or {}).get(
-            mlrun.common.schemas.constants.LabelNames.schedule_name
+            schemas.constants.LabelNames.schedule_name
         )
         is_scheduled = bool(schedule_name)
         try:

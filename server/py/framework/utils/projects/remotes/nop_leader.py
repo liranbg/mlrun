@@ -14,11 +14,11 @@
 
 import datetime
 
-import mlrun.common.schemas
 import mlrun.errors
 
 import framework.utils.projects.remotes.leader as project_leader
 import framework.utils.singletons.project_member
+import schemas
 
 
 class Member(project_leader.Member):
@@ -26,13 +26,13 @@ class Member(project_leader.Member):
         super().__init__()
         self.db_session = None
         self.project_owner_access_key = ""
-        self._project_role = mlrun.common.schemas.ProjectsRole.nop
+        self._project_role = schemas.ProjectsRole.nop
 
     def create_project(
         self,
         session: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
     ) -> bool:
         self._update_state(project)
@@ -49,8 +49,8 @@ class Member(project_leader.Member):
         self,
         session: str,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         self._update_state(project)
         auth_info.projects_role = self._project_role
@@ -59,13 +59,13 @@ class Member(project_leader.Member):
         )
 
     @staticmethod
-    def _update_state(project: mlrun.common.schemas.Project):
+    def _update_state(project: schemas.Project):
         if (
             not project.status.state
             or project.status.state
-            in mlrun.common.schemas.ProjectState.terminal_states()
+            in schemas.ProjectState.terminal_states()
         ):
-            project.status.state = mlrun.common.schemas.ProjectState(
+            project.status.state = schemas.ProjectState(
                 project.spec.desired_state
             )
 
@@ -73,8 +73,8 @@ class Member(project_leader.Member):
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
         wait_for_completion: bool = True,
     ) -> bool:
         auth_info.projects_role = self._project_role
@@ -88,9 +88,9 @@ class Member(project_leader.Member):
     def list_projects(
         self,
         session: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         updated_after: datetime.datetime | None = None,
-    ) -> tuple[list[mlrun.common.schemas.Project], datetime.datetime | None]:
+    ) -> tuple[list[schemas.Project], datetime.datetime | None]:
         return (
             framework.utils.singletons.project_member.get_project_member()
             .list_projects(self.db_session, auth_info)
@@ -102,8 +102,8 @@ class Member(project_leader.Member):
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         auth_info.projects_role = self._project_role
         return (
             framework.utils.singletons.project_member.get_project_member().get_project(
@@ -112,18 +112,18 @@ class Member(project_leader.Member):
         )
 
     def format_as_leader_project(
-        self, project: mlrun.common.schemas.Project
-    ) -> mlrun.common.schemas.IguazioProject:
-        return mlrun.common.schemas.IguazioProject(data=project.dict())
+        self, project: schemas.Project
+    ) -> schemas.IguazioProject:
+        return schemas.IguazioProject(data=project.dict())
 
     def get_project_owner(
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         auth_info.projects_role = self._project_role
         project = self.get_project(session, name, auth_info)
-        return mlrun.common.schemas.ProjectOwner(
+        return schemas.ProjectOwner(
             username=project.spec.owner, access_key=self.project_owner_access_key
         )

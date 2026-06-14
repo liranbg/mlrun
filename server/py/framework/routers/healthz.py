@@ -16,8 +16,9 @@ import http
 
 from fastapi import APIRouter
 
-import mlrun.common.schemas
 from mlrun.config import config as mlconfig
+
+import schemas
 
 router = APIRouter()
 
@@ -30,8 +31,8 @@ async def health():
     # offline is the initial state
     # waiting for chief is set for workers waiting for chief to be ready and then clusterize against it
     if mlconfig.httpdb.state in [
-        mlrun.common.schemas.APIStates.offline,
-        mlrun.common.schemas.APIStates.waiting_for_chief,
+        schemas.APIStates.offline,
+        schemas.APIStates.waiting_for_chief,
     ]:
         raise mlrun.errors.MLRunServiceUnavailableError()
 

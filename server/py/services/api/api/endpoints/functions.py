@@ -33,7 +33,6 @@ import mlrun.common.constants
 import mlrun.common.formatters
 import mlrun.common.model_monitoring
 import mlrun.common.model_monitoring.helpers
-import mlrun.common.schemas
 from mlrun.common.helpers import parse_versioned_object_uri
 from mlrun.errors import err_to_str
 from mlrun.run import new_function
@@ -49,6 +48,7 @@ import framework.utils.helpers
 import framework.utils.pagination
 import framework.utils.singletons.k8s
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud.model_monitoring.deployment
 import services.api.crud.runtimes.nuclio.function
 import services.api.launcher
@@ -69,7 +69,7 @@ async def store_function(
     name: str,
     tag: str = "",
     versioned: bool = False,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     await run_in_threadpool(
@@ -80,10 +80,10 @@ async def store_function(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -118,7 +118,7 @@ async def get_function(
     tag: str = "",
     hash_key="",
     format_: str = Query(mlrun.common.formatters.FunctionFormat.full, alias="format"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     func = await run_in_threadpool(
@@ -132,10 +132,10 @@ async def get_function(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -159,7 +159,7 @@ async def list_functions(
     page_size: int = Query(None, alias="page-size", gt=0),
     page_token: str = Query(None, alias="page-token"),
     format_: str = Query(mlrun.common.formatters.FunctionFormat.full, alias="format"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ):
     if not project:
@@ -174,7 +174,7 @@ async def list_functions(
 
     async def _filter_functions_by_permissions(_functions):
         return await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             _functions,
             lambda function: (
                 function.get("metadata", {}).get("project"),
@@ -213,13 +213,13 @@ async def list_functions(
 @router.post("/build/function/")
 async def build_function(
     request: Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
     client_python_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.python_version
+        None, alias=schemas.HeaderNames.python_version
     ),
 ):
     data = None
@@ -244,10 +244,10 @@ async def build_function(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             function_name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )
@@ -260,7 +260,7 @@ async def build_function(
     ).get("track_models", False):
         if (
             mlrun.mlconf.httpdb.clusterization.role
-            != mlrun.common.schemas.ClusterizationRole.chief
+            != schemas.ClusterizationRole.chief
         ):
             logger.info(
                 "Requesting to deploy serving function with track models, re-routing to chief",
@@ -300,18 +300,18 @@ async def build_function(
     }
 
 
-@router.post("/start/function", response_model=mlrun.common.schemas.BackgroundTask)
-@router.post("/start/function/", response_model=mlrun.common.schemas.BackgroundTask)
+@router.post("/start/function", response_model=schemas.BackgroundTask)
+@router.post("/start/function/", response_model=schemas.BackgroundTask)
 async def start_function(
     request: Request,
     background_tasks: BackgroundTasks,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
     client_python_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.python_version
+        None, alias=schemas.HeaderNames.python_version
     ),
 ):
     # TODO: ensure project here !!! for background task
@@ -328,10 +328,10 @@ async def start_function(
     function = await run_in_threadpool(_parse_start_function_body, db_session, data)
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             function.metadata.project,
             function.metadata.name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )
@@ -360,7 +360,7 @@ async def start_function(
 @router.post("/status/function/")
 async def function_status(
     request: Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     data = None
     try:
@@ -387,21 +387,21 @@ async def build_status(
     logs: bool = True,
     last_log_timestamp: float = 0.0,
     verbose: bool = False,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
 ):
     if not project:
         raise mlrun.errors.MLRunMissingProjectError()
     await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.function,
+        schemas.AuthorizationResourceTypes.function,
         project,
         name,
         # store since with the current mechanism we update the status (and store the function) in the DB when a client
         # query for the status
-        mlrun.common.schemas.AuthorizationAction.store,
+        schemas.AuthorizationAction.store,
         auth_info,
     )
     fn = await run_in_threadpool(
@@ -458,13 +458,13 @@ def _handle_job_deploy_status(
     # job deploy status
     response_headers = {}
     function_state = (
-        get_in(fn, "status.state", "") or mlrun.common.schemas.FunctionState.initialized
+        get_in(fn, "status.state", "") or schemas.FunctionState.initialized
     )
     pod = get_in(fn, "status.build_pod", "")
     image = get_in(fn, "spec.build.image", "")
     out = b""
     if not pod:
-        if function_state == mlrun.common.schemas.FunctionState.ready:
+        if function_state == schemas.FunctionState.ready:
             # when the function has been built we set the created image into the `spec.image` for reference see at the
             # end of the function where we resolve if the status is ready and then set the spec.build.image to
             # spec.image
@@ -485,10 +485,10 @@ def _handle_job_deploy_status(
     # read from log file
     log_file = framework.api.utils.log_path(project, f"build_{name}__{tag or 'latest'}")
     if (
-        function_state in mlrun.common.schemas.FunctionState.terminal_states()
+        function_state in schemas.FunctionState.terminal_states()
         and log_file.exists()
     ):
-        if function_state == mlrun.common.schemas.FunctionState.ready:
+        if function_state == schemas.FunctionState.ready:
             # when the function has been built we set the created image into the `spec.image` for reference see at the
             # end of the function where we resolve if the status is ready and then set the spec.build.image to
             # spec.image
@@ -522,25 +522,25 @@ def _handle_job_deploy_status(
     )
 
     normalized_pod_function_state = (
-        mlrun.common.schemas.FunctionState.get_function_state_from_pod_state(
+        schemas.FunctionState.get_function_state_from_pod_state(
             build_pod_state
         )
     )
-    if normalized_pod_function_state == mlrun.common.schemas.FunctionState.ready:
+    if normalized_pod_function_state == schemas.FunctionState.ready:
         logger.info(
             "Build completed successfully",
             function_name=name,
             pod=pod,
             pod_state=build_pod_state,
         )
-    elif normalized_pod_function_state == mlrun.common.schemas.FunctionState.error:
+    elif normalized_pod_function_state == schemas.FunctionState.error:
         logger.error(
             "Build failed", function_name=name, pod_name=pod, pod_status=build_pod_state
         )
 
     if (
         logs
-        and normalized_pod_function_state == mlrun.common.schemas.FunctionState.pending
+        and normalized_pod_function_state == schemas.FunctionState.pending
         and framework.utils.helpers.validate_client_version(client_version, "1.8.0-rc1")
     ):
         response_headers["deploy_status_text_kind"] = (
@@ -575,10 +575,10 @@ Message: {event.message}
         (
             logs
             and normalized_pod_function_state
-            != mlrun.common.schemas.FunctionState.pending
+            != schemas.FunctionState.pending
         )
         or normalized_pod_function_state
-        in mlrun.common.schemas.FunctionState.terminal_states()
+        in schemas.FunctionState.terminal_states()
     ):
         try:
             resp = framework.utils.singletons.k8s.get_k8s_helper(silent=False).logs(pod)
@@ -594,7 +594,7 @@ Message: {event.message}
 
         if (
             normalized_pod_function_state
-            in mlrun.common.schemas.FunctionState.terminal_states()
+            in schemas.FunctionState.terminal_states()
         ):
             # TODO: move to log collector
             log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -611,10 +611,10 @@ Message: {event.message}
     # Persist `building` for an in-progress application build instead of `running`/`pending`
     persisted_function_state = normalized_pod_function_state
     if fn.get("kind") == RuntimeKinds.application and normalized_pod_function_state in (
-        mlrun.common.schemas.FunctionState.running,
-        mlrun.common.schemas.FunctionState.pending,
+        schemas.FunctionState.running,
+        schemas.FunctionState.pending,
     ):
-        persisted_function_state = mlrun.common.schemas.FunctionState.building
+        persisted_function_state = schemas.FunctionState.building
 
     # check if the previous function state is different from the current build pod state, if that is the case then
     # update the function and store to the database
@@ -622,7 +622,7 @@ Message: {event.message}
         update_in(fn, "status.state", persisted_function_state)
 
         versioned = False
-        if persisted_function_state == mlrun.common.schemas.FunctionState.ready:
+        if persisted_function_state == schemas.FunctionState.ready:
             update_in(fn, "spec.image", image)
             versioned = True
 
@@ -669,7 +669,7 @@ def _parse_start_function_body(db_session, data):
 
 async def _start_function_wrapper(
     function,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     client_version: str | None = None,
     client_python_version: str | None = None,
 ):
@@ -684,7 +684,7 @@ async def _start_function_wrapper(
 
 def _start_function(
     function,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     client_version: str | None = None,
     client_python_version: str | None = None,
 ):
@@ -715,7 +715,7 @@ def _start_function(
         framework.db.session.close_session(db_session)
 
 
-async def _get_function_status(data, auth_info: mlrun.common.schemas.AuthInfo):
+async def _get_function_status(data, auth_info: schemas.AuthInfo):
     logger.info(f"Getting function status:\n{data}")
     selector = data.get("selector")
     kind = data.get("kind")
@@ -728,10 +728,10 @@ async def _get_function_status(data, auth_info: mlrun.common.schemas.AuthInfo):
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )

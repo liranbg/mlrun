@@ -22,8 +22,6 @@ from fastapi.concurrency import run_in_threadpool
 from starlette.responses import Response
 
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
-import mlrun.common.schemas.alert as alert_objects
 from mlrun import mlconf
 
 import framework.api.deps
@@ -40,6 +38,8 @@ import framework.utils.periodic
 import framework.utils.singletons.db
 import framework.utils.singletons.project_member
 import framework.utils.time_window_tracker
+import schemas
+import schemas.alert as alert_objects
 import services.alerts.crud
 import services.alerts.initial_data
 import services.api.crud
@@ -69,11 +69,11 @@ class Service(framework.service.Service):
         request: fastapi.Request,
         project: str,
         name: str,
-        alert_data: mlrun.common.schemas.AlertConfig,
+        alert_data: schemas.AlertConfig,
         force_reset: bool = False,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> mlrun.common.schemas.AlertConfig:
+    ) -> schemas.AlertConfig:
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
         #  not access it directly (ML-8565)
         await run_in_threadpool(
@@ -83,10 +83,10 @@ class Service(framework.service.Service):
             auth_info=auth_info,
         )
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
 
@@ -112,9 +112,9 @@ class Service(framework.service.Service):
         request: fastapi.Request,
         project: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> mlrun.common.schemas.AlertConfig:
+    ) -> schemas.AlertConfig:
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
         #  not access it directly (ML-8565)
         await run_in_threadpool(
@@ -125,10 +125,10 @@ class Service(framework.service.Service):
         )
 
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
 
@@ -147,9 +147,9 @@ class Service(framework.service.Service):
         project: str,
         page_size: int | None,
         offset: int | None,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> dict[str, list[mlrun.common.schemas.AlertConfig]]:
+    ) -> dict[str, list[schemas.AlertConfig]]:
         if project != "*":
             # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
             #  not access it directly (ML-8565)
@@ -181,7 +181,7 @@ class Service(framework.service.Service):
         )
 
         alerts = await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             alerts,
             lambda alert: (
                 alert.project,
@@ -199,7 +199,7 @@ class Service(framework.service.Service):
         request: fastapi.Request,
         project: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ):
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
@@ -212,10 +212,10 @@ class Service(framework.service.Service):
         )
 
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
 
@@ -235,7 +235,7 @@ class Service(framework.service.Service):
         self,
         request: fastapi.Request,
         project: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ):
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
@@ -248,10 +248,10 @@ class Service(framework.service.Service):
         )
 
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             project,
             "*",
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
 
@@ -270,7 +270,7 @@ class Service(framework.service.Service):
         request: fastapi.Request,
         project: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ):
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
@@ -282,10 +282,10 @@ class Service(framework.service.Service):
             auth_info=auth_info,
         )
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert,
+            schemas.AuthorizationResourceTypes.alert,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
 
@@ -306,8 +306,8 @@ class Service(framework.service.Service):
         request: fastapi.Request,
         project: str,
         name: str,
-        event_data: mlrun.common.schemas.Event,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        event_data: schemas.Event,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ):
         # TODO: When alerts is a different service and not in Hydra mode, we need to send the request to the API and
@@ -319,14 +319,14 @@ class Service(framework.service.Service):
             auth_info=auth_info,
         )
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.event,
+            schemas.AuthorizationResourceTypes.event,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
 
-        if mlrun.mlconf.alerts.mode == mlrun.common.schemas.alert.AlertsModes.disabled:
+        if mlrun.mlconf.alerts.mode == schemas.alert.AlertsModes.disabled:
             self._logger.debug(
                 "Alerts are disabled, skipping event processing",
                 project=project,
@@ -360,13 +360,13 @@ class Service(framework.service.Service):
         self,
         request: fastapi.Request,
         name: str,
-        alert_data: mlrun.common.schemas.AlertTemplate,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        alert_data: schemas.AlertTemplate,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ) -> Response:
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
             self._get_authorization_resource_for_alert_template(),
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
 
@@ -390,12 +390,12 @@ class Service(framework.service.Service):
         self,
         request: fastapi.Request,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> mlrun.common.schemas.AlertTemplate:
+    ) -> schemas.AlertTemplate:
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
             self._get_authorization_resource_for_alert_template(),
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
 
@@ -406,12 +406,12 @@ class Service(framework.service.Service):
     async def list_alert_templates(
         self,
         request: fastapi.Request,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> list[mlrun.common.schemas.AlertTemplate]:
+    ) -> list[schemas.AlertTemplate]:
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
             self._get_authorization_resource_for_alert_template(),
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
 
@@ -423,12 +423,12 @@ class Service(framework.service.Service):
         self,
         request: fastapi.Request,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
     ):
         await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
             self._get_authorization_resource_for_alert_template(),
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
         if not self._is_chief_or_standalone():
@@ -451,15 +451,15 @@ class Service(framework.service.Service):
         since: str | None,
         until: str | None,
         entity: str | None,
-        severity: list[Union[mlrun.common.schemas.alert.AlertSeverity, str]] | None,
-        entity_kind: Union[mlrun.common.schemas.alert.EventEntityKind, str] | None,
-        event_kind: Union[mlrun.common.schemas.alert.EventKind, str] | None,
+        severity: list[Union[schemas.alert.AlertSeverity, str]] | None,
+        entity_kind: Union[schemas.alert.EventEntityKind, str] | None,
+        event_kind: Union[schemas.alert.EventKind, str] | None,
         page: int,
         page_size: int,
         page_token: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session,
-    ) -> mlrun.common.schemas.AlertActivations:
+    ) -> schemas.AlertActivations:
         allowed_projects_with_creation_time = await (
             services.api.crud.Projects().list_allowed_project_names_with_creation_time(
                 db_session,
@@ -471,7 +471,7 @@ class Service(framework.service.Service):
 
         async def _filter_alert_activations_by_permissions(_alert_activations):
             return await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-                mlrun.common.schemas.AuthorizationResourceTypes.alert_activations,
+                schemas.AuthorizationResourceTypes.alert_activations,
                 _alert_activations,
                 lambda alert_activation: (
                     alert_activation.project,
@@ -498,7 +498,7 @@ class Service(framework.service.Service):
             event_kind=event_kind,
         )
 
-        return mlrun.common.schemas.AlertActivations(
+        return schemas.AlertActivations(
             activations=activations,
             pagination=page_info,
         )
@@ -509,15 +509,15 @@ class Service(framework.service.Service):
         project: str,
         name: str | None,
         activation_id: int,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         db_session: sqlalchemy.orm.Session = None,
-    ) -> mlrun.common.schemas.AlertActivation:
+    ) -> schemas.AlertActivation:
         await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.alert_activations,
+            schemas.AuthorizationResourceTypes.alert_activations,
             project,
             # TODO: add name emptiness check when we have fine-grained permissions
             name,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
         alert_activation = await run_in_threadpool(
@@ -652,9 +652,9 @@ class Service(framework.service.Service):
         if igz_version and igz_version < semver.VersionInfo.parse("3.6.0"):
             # alert_templates is not in OFA manifest prior to 3.6, so we use
             # the permissions of hub_source as they are the same
-            return mlrun.common.schemas.AuthorizationResourceTypes.hub_source
+            return schemas.AuthorizationResourceTypes.hub_source
 
-        return mlrun.common.schemas.AuthorizationResourceTypes.alert_templates
+        return schemas.AuthorizationResourceTypes.alert_templates
 
     def _generate_event_on_failed_runs(
         self, db_session: sqlalchemy.orm.Session, last_update_time: datetime.datetime
@@ -674,13 +674,13 @@ class Service(framework.service.Service):
             project = run["metadata"]["project"]
             run_uid = run["metadata"]["uid"]
             run_name = run["metadata"]["name"]
-            entity = mlrun.common.schemas.alert.EventEntities(
+            entity = schemas.alert.EventEntities(
                 kind=alert_objects.EventEntityKind.JOB,
                 project=project,
                 ids=[run_name],
             )
             event_value = {"uid": run_uid, "error": run["status"].get("error", None)}
-            event_data = mlrun.common.schemas.Event(
+            event_data = schemas.Event(
                 kind=alert_objects.EventKind.FAILED,
                 entity=entity,
                 value_dict=event_value,
@@ -707,7 +707,7 @@ class Service(framework.service.Service):
         """
         return (
             mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
             or mlconf.services.service_name == "alerts"
         )
 

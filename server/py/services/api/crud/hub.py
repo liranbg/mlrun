@@ -18,18 +18,18 @@ from typing import Any
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
-import mlrun.common.schemas.hub
 import mlrun.errors
 import mlrun.utils.helpers
 import mlrun.utils.singleton
-from mlrun.common.schemas.hub import HubSourceType
 from mlrun.config import config
 from mlrun.datastore import store_manager
 
 import framework.utils.singletons.db
 import framework.utils.singletons.k8s
+import schemas
+import schemas.hub
 from .secrets import Secrets, SecretsClientType
+from schemas.hub import HubSourceType
 
 # Using a complex separator, as it's less likely someone will use it in a real secret name
 secret_name_separator = "-__-"
@@ -40,7 +40,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         self._internal_project_name = config.hub.k8s_secrets_project_name
         self._catalogs = defaultdict(dict)
 
-    def add_source(self, source: mlrun.common.schemas.hub.HubSource):
+    def add_source(self, source: schemas.hub.HubSource):
         source_name = source.metadata.name
         credentials = source.spec.credentials
         if credentials:
@@ -60,19 +60,19 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         ]
         Secrets().delete_project_secrets(
             self._internal_project_name,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretProviderName.kubernetes,
             secrets_to_delete,
             allow_internal_secrets=True,
         )
 
     def get_source_catalog(
         self,
-        source: mlrun.common.schemas.hub.HubSource,
+        source: schemas.hub.HubSource,
         version: str | None = None,
         tag: str | None = None,
         force_refresh: bool = False,
         object_type: HubSourceType = HubSourceType.functions,
-    ) -> mlrun.common.schemas.hub.HubCatalog:
+    ) -> schemas.hub.HubCatalog:
         """
         Getting the catalog object by source.
         If version and/or tag are given, the catalog will be filtered accordingly.
@@ -98,7 +98,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         else:
             catalog = self._catalogs[source_name][object_type]
 
-        result_catalog = mlrun.common.schemas.hub.HubCatalog(
+        result_catalog = schemas.hub.HubCatalog(
             catalog=[], channel=source.spec.channel
         )
         for item in catalog.catalog:
@@ -114,13 +114,13 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     def get_item(
         self,
-        source: mlrun.common.schemas.hub.HubSource,
+        source: schemas.hub.HubSource,
         item_name: str,
         version: str | None = None,
         tag: str | None = None,
         force_refresh: bool = False,
         item_type: HubSourceType = HubSourceType.functions,
-    ) -> mlrun.common.schemas.hub.HubItem:
+    ) -> schemas.hub.HubItem:
         """
         Retrieve item from source. The item is filtered by tag and version.
 
@@ -154,7 +154,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         return items[0]
 
     def get_item_object_using_source_credentials(
-        self, source: mlrun.common.schemas.hub.HubSource, url
+        self, source: schemas.hub.HubSource, url
     ):
         credentials = self._get_source_credentials(source.metadata.name)
 
@@ -175,8 +175,8 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     def get_asset(
         self,
-        source: mlrun.common.schemas.hub.HubSource,
-        item: mlrun.common.schemas.hub.HubItem,
+        source: schemas.hub.HubSource,
+        item: schemas.hub.HubItem,
         asset_name: str,
     ) -> tuple[bytes, str]:
         """
@@ -202,7 +202,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         tag: str | None = None,
         version: str | None = None,
         item_type: HubSourceType = HubSourceType.functions,
-    ) -> list[mlrun.common.schemas.IndexedHubSource]:
+    ) -> list[schemas.IndexedHubSource]:
         hub_sources = framework.utils.singletons.db.get_db().list_hub_sources(
             db_session
         )
@@ -210,12 +210,12 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     def filter_hub_sources(
         self,
-        sources: list[mlrun.common.schemas.IndexedHubSource],
+        sources: list[schemas.IndexedHubSource],
         item_name: str | None = None,
         tag: str | None = None,
         version: str | None = None,
         item_type: HubSourceType = HubSourceType.functions,
-    ) -> list[mlrun.common.schemas.IndexedHubSource]:
+    ) -> list[schemas.IndexedHubSource]:
         """
         Retrieve only the sources that contains the item name
         (and tag/version if supplied, if tag and version are both given, only tag will be taken into consideration)
@@ -280,8 +280,8 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         }
         Secrets().store_project_secrets(
             self._internal_project_name,
-            mlrun.common.schemas.SecretsData(
-                provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretsData(
+                provider=schemas.SecretProviderName.kubernetes,
                 secrets=adjusted_credentials,
             ),
             allow_internal_secrets=True,
@@ -296,7 +296,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
             Secrets()
             .list_project_secrets(
                 self._internal_project_name,
-                mlrun.common.schemas.SecretProviderName.kubernetes,
+                schemas.SecretProviderName.kubernetes,
                 allow_secrets_from_k8s=True,
                 allow_internal_secrets=True,
             )
@@ -312,8 +312,8 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     @staticmethod
     def _get_asset_full_path(
-        source: mlrun.common.schemas.hub.HubSource,
-        item: mlrun.common.schemas.hub.HubItem,
+        source: schemas.hub.HubSource,
+        item: schemas.hub.HubItem,
         asset: str,
     ):
         """
@@ -336,10 +336,10 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     @staticmethod
     def _transform_catalog_dict_to_schema(
-        source: mlrun.common.schemas.hub.HubSource,
+        source: schemas.hub.HubSource,
         catalog_dict: dict[str, Any],
         object_type: HubSourceType = HubSourceType.functions,
-    ) -> mlrun.common.schemas.hub.HubCatalog:
+    ) -> schemas.hub.HubCatalog:
         """
         Transforms catalog dictionary to HubCatalog schema
         :param source:          Hub source object.
@@ -349,7 +349,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         :param object_type:    The type of the object to retrieve from the source (e.g: functions, modules).
         :return: catalog object
         """
-        catalog = mlrun.common.schemas.hub.HubCatalog(
+        catalog = schemas.hub.HubCatalog(
             catalog=[], channel=source.spec.channel
         )
         # Loop over objects, then over object versions.
@@ -364,19 +364,19 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
                 object_details_dict.update(
                     {"name": mlrun.utils.helpers.normalize_name(object_name)}
                 )
-                metadata = mlrun.common.schemas.hub.HubItemMetadata(
+                metadata = schemas.hub.HubItemMetadata(
                     tag=version_tag, **object_details_dict
                 )
                 item_uri = source.get_full_uri(
                     metadata.get_relative_path(), object_type
                 )
-                spec = mlrun.common.schemas.hub.HubItemSpec(
+                spec = schemas.hub.HubItemSpec(
                     item_uri=item_uri, assets=assets, **spec_dict
                 )
-                item = mlrun.common.schemas.hub.HubItem(
+                item = schemas.hub.HubItem(
                     metadata=metadata,
                     spec=spec,
-                    status=mlrun.common.schemas.ObjectStatus(),
+                    status=schemas.ObjectStatus(),
                 )
                 catalog.catalog.append(item)
 
@@ -384,9 +384,9 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
 
     @staticmethod
     def _get_catalog_items_filtered_by_name(
-        catalog: list[mlrun.common.schemas.hub.HubItem],
+        catalog: list[schemas.hub.HubItem],
         item_name: str,
-    ) -> list[mlrun.common.schemas.hub.HubItem]:
+    ) -> list[schemas.hub.HubItem]:
         """
         Retrieve items from catalog filtered by name
 
@@ -399,7 +399,7 @@ class Hub(metaclass=mlrun.utils.singleton.Singleton):
         return [item for item in catalog if item.metadata.name == normalized_name]
 
     @staticmethod
-    def _normalize_categories(item: mlrun.common.schemas.hub.HubItem):
+    def _normalize_categories(item: schemas.hub.HubItem):
         """
         Normalize the item categories to UI format using a predefined mapping,
         falling back to default (title) formatting when no match is found.

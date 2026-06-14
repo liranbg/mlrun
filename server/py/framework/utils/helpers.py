@@ -25,8 +25,9 @@ from humanfriendly import InvalidTimespan, parse_timespan
 from timelength import TimeLength
 
 import mlrun
-import mlrun.common.schemas
 from mlrun.utils import logger
+
+import schemas
 
 
 def ensure_running_on_chief(function):
@@ -41,7 +42,7 @@ def ensure_running_on_chief(function):
     def _ensure_running_on_chief():
         if (
             mlrun.mlconf.httpdb.clusterization.role
-            != mlrun.common.schemas.ClusterizationRole.chief
+            != schemas.ClusterizationRole.chief
         ):
             if (
                 mlrun.mlconf.httpdb.clusterization.ensure_function_running_on_chief_mode
@@ -113,7 +114,7 @@ def extract_image_tag(image_reference):
 
 
 def is_request_from_leader(
-    projects_role: mlrun.common.schemas.ProjectsRole | None,
+    projects_role: schemas.ProjectsRole | None,
     leader_name: str | None = None,
 ):
     leader_name = leader_name or mlrun.mlconf.httpdb.projects.leader
@@ -191,7 +192,7 @@ def set_scheduled_object_labels(
 def merge_schedule_and_db_schedule_labels(
     labels: dict | None,
     scheduled_object: Union[dict | None, Callable],
-    db_schedule: mlrun.common.schemas.ScheduleRecord | None,
+    db_schedule: schemas.ScheduleRecord | None,
 ) -> tuple[dict | None, Union[dict | None, Callable]]:
     """
     Merges the provided schedule labels and scheduled object labels with the labels

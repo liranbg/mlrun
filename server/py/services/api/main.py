@@ -24,7 +24,6 @@ import sqlalchemy.orm
 import mlrun
 import mlrun.common.db.dialects
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.lists
 import mlrun.utils
@@ -48,6 +47,7 @@ import framework.utils.helpers
 import framework.utils.notifications.notification_pusher
 import framework.utils.pagination_cache
 import framework.utils.time_window_tracker
+import schemas
 import services.api.crud
 import services.api.initial_data
 import services.api.runtime_handlers
@@ -100,7 +100,7 @@ class Service(framework.service.Service):
         ensure_scheduler()
         if (
             mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
             and mlconf.httpdb.clusterization.chief.feature_gates.scheduler == "enabled"
         ):
             await start_scheduler()
@@ -114,7 +114,7 @@ class Service(framework.service.Service):
         # maintenance periodic functions should only run on the chief instance
         if (
             mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
         ):
             await mlrun.utils.run_in_threadpool(
                 services.api.initial_data.update_default_configuration_data
@@ -160,7 +160,7 @@ class Service(framework.service.Service):
             teardown_coros.append(get_scheduler().stop())
         if (
             mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
         ):
             teardown_coros.append(
                 mlrun.utils.run_in_threadpool(
@@ -173,7 +173,7 @@ class Service(framework.service.Service):
     def _initialize_chief(self):
         if (
             mlconf.httpdb.clusterization.role
-            == mlrun.common.schemas.ClusterizationRole.chief
+            == schemas.ClusterizationRole.chief
         ):
             services.api.initial_data.init_data()
             # Inventory snapshots are emitted from a single source of truth.
@@ -214,7 +214,7 @@ class Service(framework.service.Service):
     async def _start_periodic_logs_collection(
         self,
     ):
-        if mlconf.log_collector.mode == mlrun.common.schemas.LogsCollectorMode.legacy:
+        if mlconf.log_collector.mode == schemas.LogsCollectorMode.legacy:
             self._logger.info(
                 "Using legacy logs collection method, skipping logs collection periodic function",
                 mode=mlconf.log_collector.mode,
@@ -679,7 +679,7 @@ class Service(framework.service.Service):
     async def _start_periodic_stop_logs(
         self,
     ):
-        if mlconf.log_collector.mode == mlrun.common.schemas.LogsCollectorMode.legacy:
+        if mlconf.log_collector.mode == schemas.LogsCollectorMode.legacy:
             self._logger.info(
                 "Using legacy logs collection method, skipping stop logs periodic function",
                 mode=mlconf.log_collector.mode,
@@ -1104,7 +1104,7 @@ class Service(framework.service.Service):
             user_id = (run.spec.auth or {}).get("user_id") if run.spec.auth else None
             framework.db.session.run_function_with_new_db_session(
                 framework.api.utils.submit_run_from_body,
-                mlrun.common.schemas.AuthInfo(user_id=user_id),
+                schemas.AuthInfo(user_id=user_id),
                 # TODO: pass values for param_file_secrets ?
                 submit_job_body,
             )

@@ -19,8 +19,6 @@ import sqlalchemy.orm
 
 import mlrun.artifacts.base
 import mlrun.common.formatters
-import mlrun.common.schemas
-import mlrun.common.schemas.artifact
 import mlrun.config
 import mlrun.errors
 import mlrun.lists
@@ -30,6 +28,8 @@ from mlrun.errors import err_to_str
 from mlrun.utils import logger
 
 import framework.utils.singletons.db
+import schemas
+import schemas.artifact
 import services.api.crud
 
 
@@ -46,7 +46,7 @@ class Artifacts(
         iter: int | None = None,
         project: str | None = None,
         producer_id: str | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
     ):
         artifact_project = artifact.get("project")
         if artifact_project and artifact_project != project:
@@ -78,7 +78,7 @@ class Artifacts(
         iter: int | None = None,
         producer_id: str | None = None,
         project: str | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
     ):
         artifact_project = artifact.get("project")
         if artifact_project and artifact_project != project:
@@ -138,7 +138,7 @@ class Artifacts(
         since: datetime.datetime | None = None,
         until: datetime.datetime | None = None,
         kind: str | None = None,
-        category: mlrun.common.schemas.ArtifactCategories | None = None,
+        category: schemas.ArtifactCategories | None = None,
         iter: int | None = None,
         best_iteration: bool = False,
         format_: mlrun.common.formatters.ArtifactFormat = mlrun.common.formatters.ArtifactFormat.full,
@@ -147,12 +147,12 @@ class Artifacts(
         parent: str | None = None,
         offset: int | None = None,
         limit: int | None = None,
-        partition_by: mlrun.common.schemas.ArtifactPartitionByField | None = None,
+        partition_by: schemas.ArtifactPartitionByField | None = None,
         rows_per_partition: int | None = 1,
-        partition_sort_by: mlrun.common.schemas.SortField
-        | None = mlrun.common.schemas.SortField.updated,
-        partition_order: mlrun.common.schemas.OrderType
-        | None = mlrun.common.schemas.OrderType.desc,
+        partition_sort_by: schemas.SortField
+        | None = schemas.SortField.updated,
+        partition_order: schemas.OrderType
+        | None = schemas.OrderType.desc,
     ) -> list:
         if labels is None:
             labels = []
@@ -199,7 +199,7 @@ class Artifacts(
         self,
         db_session: sqlalchemy.orm.Session,
         project: str | None = None,
-        category: mlrun.common.schemas.ArtifactCategories = None,
+        category: schemas.ArtifactCategories = None,
     ):
         return framework.utils.singletons.db.get_db().list_artifact_tags(
             db_session, project, category
@@ -214,11 +214,11 @@ class Artifacts(
         object_uid: str | None = None,
         producer_id: str | None = None,
         iteration: int | None = None,
-        deletion_strategy: mlrun.common.schemas.artifact.ArtifactsDeletionStrategies = (
-            mlrun.common.schemas.artifact.ArtifactsDeletionStrategies.metadata_only
+        deletion_strategy: schemas.artifact.ArtifactsDeletionStrategies = (
+            schemas.artifact.ArtifactsDeletionStrategies.metadata_only
         ),
         secrets: dict | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         artifact = framework.utils.singletons.db.get_db().validate_artifact_removal_preconditions(
             session=db_session,
@@ -233,8 +233,8 @@ class Artifacts(
             return None
         # delete artifacts data by deletion strategy
         if deletion_strategy in [
-            mlrun.common.schemas.artifact.ArtifactsDeletionStrategies.data_optional,
-            mlrun.common.schemas.artifact.ArtifactsDeletionStrategies.data_force,
+            schemas.artifact.ArtifactsDeletionStrategies.data_optional,
+            schemas.artifact.ArtifactsDeletionStrategies.data_force,
         ]:
             self._delete_artifact_data(
                 key=key,
@@ -263,7 +263,7 @@ class Artifacts(
         name: str = "",
         tag: str = "latest",
         labels: list[str] | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         producer_id: str | None = None,
     ):
         # TODO : If, in the future, this API is extended to delete the artifact data as well,
@@ -282,7 +282,7 @@ class Artifacts(
     def _enrich_artifact(
         self,
         artifact: dict,
-        auth_info: mlrun.common.schemas.AuthInfo | None,
+        auth_info: schemas.AuthInfo | None,
     ) -> None:
         """Enrich artifact with size and producer before storing or creating."""
         self._resolve_artifact_size(artifact, auth_info)
@@ -312,7 +312,7 @@ class Artifacts(
     def _enrich_artifact_producer(
         self,
         artifact: dict,
-        auth_info: mlrun.common.schemas.AuthInfo | None,
+        auth_info: schemas.AuthInfo | None,
     ):
         if not auth_info:
             return
@@ -335,7 +335,7 @@ class Artifacts(
         producer["owner"] = auth_info.username
 
     @staticmethod
-    def _generate_default_producer(auth_info: mlrun.common.schemas.AuthInfo) -> dict:
+    def _generate_default_producer(auth_info: schemas.AuthInfo) -> dict:
         return {
             "owner": auth_info.username,
             "kind": "api",
@@ -346,11 +346,11 @@ class Artifacts(
         key: str,
         tag: str = "latest",
         project: str | None = None,
-        deletion_strategy: mlrun.common.schemas.artifact.ArtifactsDeletionStrategies = (
-            mlrun.common.schemas.artifact.ArtifactsDeletionStrategies.metadata_only
+        deletion_strategy: schemas.artifact.ArtifactsDeletionStrategies = (
+            schemas.artifact.ArtifactsDeletionStrategies.metadata_only
         ),
         secrets: dict | None = None,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         artifact: dict | None = None,
     ):
         logger.debug("Deleting artifact data", project=project, key=key, tag=tag)
@@ -388,6 +388,6 @@ class Artifacts(
 
             if (
                 deletion_strategy
-                == mlrun.common.schemas.artifact.ArtifactsDeletionStrategies.data_force
+                == schemas.artifact.ArtifactsDeletionStrategies.data_force
             ):
                 raise

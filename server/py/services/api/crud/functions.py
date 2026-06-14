@@ -19,7 +19,6 @@ import sqlalchemy.orm
 
 import mlrun.common.formatters
 import mlrun.common.helpers
-import mlrun.common.schemas
 import mlrun.common.types
 import mlrun.config
 import mlrun.errors
@@ -27,6 +26,7 @@ import mlrun.utils.singleton
 
 import framework.api.utils
 import framework.utils.singletons.db
+import schemas
 import services.api.runtime_handlers
 
 
@@ -41,7 +41,7 @@ class Functions(
         project: str | None = None,
         tag: str = "",
         versioned: bool = False,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
     ) -> str:
         if auth_info:
             function_obj = mlrun.new_function(

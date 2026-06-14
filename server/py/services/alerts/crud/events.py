@@ -16,10 +16,10 @@ import datetime
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun.utils import logger
 
+import schemas
 import services.alerts.crud
 
 
@@ -33,7 +33,7 @@ class Events(
     cache_initialized = False
 
     @staticmethod
-    def is_valid_event(project: str, event_data: mlrun.common.schemas.Event):
+    def is_valid_event(project: str, event_data: schemas.Event):
         if event_data.entity.project != project:
             return False
 
@@ -82,7 +82,7 @@ class Events(
     def process_event(
         self,
         session: sqlalchemy.orm.Session,
-        event_data: mlrun.common.schemas.Event,
+        event_data: schemas.Event,
         event_name: str,
         project: str | None = None,
         validate_event: bool = False,

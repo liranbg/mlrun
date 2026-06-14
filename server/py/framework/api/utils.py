@@ -35,7 +35,6 @@ from kubernetes.client import V1EnvVar, V1EnvVarSource
 from sqlalchemy.orm import Session
 
 import mlrun.common.constants
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.runtimes.pod
 import mlrun.utils.helpers
@@ -59,6 +58,7 @@ import framework.utils.notifications
 import framework.utils.singletons.db
 import framework.utils.singletons.k8s
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud
 import services.api.crud.runtimes.nuclio
 import services.api.utils.singletons.logs_dir
@@ -139,7 +139,7 @@ def get_allowed_path_prefixes_list() -> list[str]:
 
 
 def get_secrets(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
 ):
     return {
         "V3IO_ACCESS_KEY": auth_info.data_session,
@@ -175,7 +175,7 @@ def parse_submit_run_body(data):
 
 
 def _generate_function_and_task_from_submit_run_body(
-    db_session: Session, auth_info: mlrun.common.schemas.AuthInfo, data
+    db_session: Session, auth_info: schemas.AuthInfo, data
 ):
     function_dict, function_url, task = parse_submit_run_body(data)
 
@@ -212,7 +212,7 @@ def _generate_function_and_task_from_submit_run_body(
 
 async def submit_run(
     db_session: Session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     background_tasks: fastapi.BackgroundTasks,
     data,
 ):
@@ -297,7 +297,7 @@ async def submit_run(
 
 def apply_enrichment_and_validation_on_task(
     task: dict,
-    auth_info: mlrun.common.schemas.AuthInfo | None = None,
+    auth_info: schemas.AuthInfo | None = None,
     mask_notification_params_on_task: bool = True,
 ):
     # Conceal notification config params from the task object with secrets
@@ -333,7 +333,7 @@ def validate_function_secret_sources(function):
 # TODO: split enrichment and validation to separate functions should be in the launcher
 def apply_enrichment_and_validation_on_function(
     function,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     ensure_auth: bool = True,
     perform_auto_mount: bool = True,
     validate_service_account: bool = True,
@@ -466,7 +466,7 @@ def validate_secret_allowed(
         )
 
 
-def mask_function_sensitive_data(function, auth_info: mlrun.common.schemas.AuthInfo):
+def mask_function_sensitive_data(function, auth_info: schemas.AuthInfo):
     if not mlrun.runtimes.RuntimeKinds.is_local_runtime(function.kind):
         _mask_v3io_access_key_env_var(function, auth_info)
         _mask_v3io_volume_credentials(function, auth_info)
@@ -474,7 +474,7 @@ def mask_function_sensitive_data(function, auth_info: mlrun.common.schemas.AuthI
 
 def _mask_v3io_volume_credentials(
     function: mlrun.runtimes.pod.KubeResource,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
 ):
     """
     Go over all of the flex volumes with v3io/fuse driver of the function and try mask their access key to a secret
@@ -557,8 +557,8 @@ def _mask_v3io_volume_credentials(
             if not username:
                 continue
             secret_name = services.api.crud.Secrets().store_auth_secret(
-                mlrun.common.schemas.AuthSecretData(
-                    provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+                schemas.AuthSecretData(
+                    provider=schemas.SecretProviderName.kubernetes,
                     username=username,
                     access_key=access_key,
                 )
@@ -573,7 +573,7 @@ def _resolve_v3io_fuse_volume_access_key_matching_username(
     volume: dict,
     volume_name: str,
     volume_name_to_volume_mounts: dict,
-    auth_info: mlrun.common.schemas.AuthInfo = None,
+    auth_info: schemas.AuthInfo = None,
 ) -> str | None:
     """
     Usually v3io fuse mount is set using mlrun.mount_v3io, which by default add a volume mount to /users/<username>, try
@@ -626,7 +626,7 @@ def _resolve_v3io_fuse_volume_access_key_matching_username(
 
 
 def _mask_v3io_access_key_env_var(
-    function: mlrun.runtimes.pod.KubeResource, auth_info: mlrun.common.schemas.AuthInfo
+    function: mlrun.runtimes.pod.KubeResource, auth_info: schemas.AuthInfo
 ):
     v3io_access_key = function.get_env("V3IO_ACCESS_KEY")
     # if it's already a V1EnvVarSource or dict instance, it's already been masked
@@ -653,14 +653,14 @@ def _mask_v3io_access_key_env_var(
                 )
                 return
         secret_name = services.api.crud.Secrets().store_auth_secret(
-            mlrun.common.schemas.AuthSecretData(
-                provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.AuthSecretData(
+                provider=schemas.SecretProviderName.kubernetes,
                 username=username,
                 access_key=v3io_access_key,
             )
         )
         access_key_secret_key = (
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key("access_key")
+            schemas.AuthSecretData.get_field_secret_key("access_key")
         )
         function.set_env_from_secret(
             "V3IO_ACCESS_KEY", secret_name, access_key_secret_key
@@ -669,7 +669,7 @@ def _mask_v3io_access_key_env_var(
 
 def ensure_function_has_auth_set(
     function: mlrun.runtimes.BaseRuntime,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     allow_empty_access_key: bool = False,
 ):
     """
@@ -716,8 +716,8 @@ def ensure_function_has_auth_set(
                     "Username is missing from auth info"
                 )
             secret_name = services.api.crud.Secrets().store_auth_secret(
-                mlrun.common.schemas.AuthSecretData(
-                    provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+                schemas.AuthSecretData(
+                    provider=schemas.SecretProviderName.kubernetes,
                     username=auth_info.username,
                     access_key=function.metadata.credentials.access_key,
                 )
@@ -731,7 +731,7 @@ def ensure_function_has_auth_set(
             )
 
         access_key_secret_key = (
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key("access_key")
+            schemas.AuthSecretData.get_field_secret_key("access_key")
         )
         auth_env_vars = {
             mlrun.common.runtimes.constants.FunctionEnvironmentVariables.auth_session: (
@@ -743,7 +743,7 @@ def ensure_function_has_auth_set(
             function.set_env_from_secret(env_key, secret_name, secret_key)
 
 
-def try_perform_auto_mount(function, auth_info: mlrun.common.schemas.AuthInfo):
+def try_perform_auto_mount(function, auth_info: schemas.AuthInfo):
     if (
         mlrun.runtimes.RuntimeKinds.is_local_runtime(function.kind)
         or function.spec.disable_auto_mount
@@ -760,7 +760,7 @@ def try_perform_auto_mount(function, auth_info: mlrun.common.schemas.AuthInfo):
 
 
 def process_function_service_account(
-    function, auth_info: mlrun.common.schemas.AuthInfo = None
+    function, auth_info: schemas.AuthInfo = None
 ):
     # If we're not running inside k8s, skip this check as it's not relevant.
     if not framework.utils.singletons.k8s.get_k8s_helper(
@@ -782,11 +782,11 @@ def process_function_service_account(
 
 
 def resolve_project_service_account_details(
-    project_name: str, auth_info: mlrun.common.schemas.AuthInfo = None
+    project_name: str, auth_info: schemas.AuthInfo = None
 ):
     allowed_service_accounts = services.api.crud.secrets.Secrets().get_project_secret(
         project_name,
-        mlrun.common.schemas.SecretProviderName.kubernetes,
+        schemas.SecretProviderName.kubernetes,
         services.api.crud.secrets.Secrets().generate_client_project_secret_key(
             services.api.crud.secrets.SecretsClientType.service_accounts, "allowed"
         ),
@@ -803,7 +803,7 @@ def resolve_project_service_account_details(
     forbidden_service_accounts_secret = (
         services.api.crud.secrets.Secrets().get_project_secret(
             project_name,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretProviderName.kubernetes,
             services.api.crud.secrets.Secrets().generate_client_project_secret_key(
                 services.api.crud.secrets.SecretsClientType.service_accounts,
                 "forbidden",
@@ -832,7 +832,7 @@ def resolve_project_service_account_details(
 
     default_service_account = services.api.crud.secrets.Secrets().get_project_secret(
         project_name,
-        mlrun.common.schemas.SecretProviderName.kubernetes,
+        schemas.SecretProviderName.kubernetes,
         services.api.crud.secrets.Secrets().generate_client_project_secret_key(
             services.api.crud.secrets.SecretsClientType.service_accounts, "default"
         ),
@@ -853,7 +853,7 @@ def resolve_project_service_account_details(
 
 
 def ensure_function_security_context(
-    function, auth_info: mlrun.common.schemas.AuthInfo
+    function, auth_info: schemas.AuthInfo
 ):
     """
     For iguazio we enforce that pods run with user id and group id depending on
@@ -865,7 +865,7 @@ def ensure_function_security_context(
     # security context is not yet supported with spark runtime since it requires spark 3.2+
     if (
         mlrun.mlconf.function.spec.security_context.enrichment_mode
-        == mlrun.common.schemas.SecurityContextEnrichmentModes.disabled.value
+        == schemas.SecurityContextEnrichmentModes.disabled.value
         or mlrun.runtimes.RuntimeKinds.is_local_runtime(function.kind)
         or function.kind == mlrun.runtimes.RuntimeKinds.spark
         # remote spark image currently requires running with user 1000 or root
@@ -881,7 +881,7 @@ def ensure_function_security_context(
     #  Enrichment with retain enrichment mode should occur on function creation only.
     if (
         mlrun.mlconf.function.spec.security_context.enrichment_mode
-        == mlrun.common.schemas.SecurityContextEnrichmentModes.retain.value
+        == schemas.SecurityContextEnrichmentModes.retain.value
         and function.spec.security_context is not None
         and function.spec.security_context.run_as_user is not None
         and function.spec.security_context.run_as_group is not None
@@ -894,8 +894,8 @@ def ensure_function_security_context(
         return
 
     if mlrun.mlconf.function.spec.security_context.enrichment_mode in [
-        mlrun.common.schemas.SecurityContextEnrichmentModes.override.value,
-        mlrun.common.schemas.SecurityContextEnrichmentModes.retain.value,
+        schemas.SecurityContextEnrichmentModes.override.value,
+        schemas.SecurityContextEnrichmentModes.retain.value,
     ]:
         # before iguazio 3.6 the user unix id is not passed in the session verification response headers
         # so we need to request it explicitly
@@ -951,7 +951,7 @@ def ensure_function_security_context(
 
 def submit_run_sync(
     db_session: Session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     fn,
     task,
     data,
@@ -978,7 +978,7 @@ def submit_run_sync(
     if schedule:
         cron_trigger = schedule
         if isinstance(cron_trigger, dict):
-            cron_trigger = mlrun.common.schemas.ScheduleCronTrigger(**cron_trigger)
+            cron_trigger = schemas.ScheduleCronTrigger(**cron_trigger)
         schedule_labels = task["metadata"].get("labels")
 
         # save the generated function enriched with the specific configuration to the db
@@ -996,7 +996,7 @@ def submit_run_sync(
                 auth_info,
                 task["metadata"]["project"],
                 task["metadata"]["name"],
-                mlrun.common.schemas.ScheduleKinds.job,
+                schemas.ScheduleKinds.job,
                 data,
                 cron_trigger,
                 schedule_labels,
@@ -1020,7 +1020,7 @@ def submit_run_sync(
             services.api.crud.Secrets()
             .list_project_secrets(
                 task["metadata"]["project"],
-                mlrun.common.schemas.SecretProviderName.kubernetes,
+                schemas.SecretProviderName.kubernetes,
                 allow_secrets_from_k8s=True,
             )
             .secrets
@@ -1046,7 +1046,7 @@ def submit_run_sync(
 
 def submit_run_from_body(
     db_session: Session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     data,
 ):
     fn, task = _generate_function_and_task_from_submit_run_body(
@@ -1082,7 +1082,7 @@ def artifact_project_and_resource_name_extractor(artifact):
 
 
 def get_or_create_project_deletion_background_task(
-    project: mlrun.common.schemas.Project, deletion_strategy: str, db_session, auth_info
+    project: schemas.Project, deletion_strategy: str, db_session, auth_info
 ) -> tuple[typing.Callable | None, str]:
     """
     This method is responsible for creating a background task for deleting a project.
@@ -1127,7 +1127,7 @@ def get_or_create_project_deletion_background_task(
             model_monitoring_access_key = services.api.api.endpoints.nuclio.process_model_monitoring_secret(
                 db_session=db_session,
                 project_name=project.metadata.name,
-                secret_key=mlrun.common.schemas.model_monitoring.ProjectSecretKeys.ACCESS_KEY,
+                secret_key=schemas.model_monitoring.ProjectSecretKeys.ACCESS_KEY,
                 store=False,
             )
         background_task_kind_format = (
@@ -1171,9 +1171,9 @@ def get_or_create_project_deletion_background_task(
 
 async def _delete_project(
     db_session: sqlalchemy.orm.Session,
-    project: mlrun.common.schemas.Project,
-    deletion_strategy: mlrun.common.schemas.DeletionStrategy,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    project: schemas.Project,
+    deletion_strategy: schemas.DeletionStrategy,
+    auth_info: schemas.AuthInfo,
     wait_for_project_deletion: bool,
     background_task_name: str,
     model_monitoring_access_key: str | None = None,
@@ -1195,7 +1195,7 @@ async def _delete_project(
         if framework.utils.helpers.is_request_from_leader(auth_info.projects_role):
             raise exc
 
-        if project.status.state != mlrun.common.schemas.ProjectState.archived:
+        if project.status.state != schemas.ProjectState.archived:
             raise mlrun.errors.MLRunPreconditionFailedError(
                 f"Failed to delete project {project_name}. "
                 "Project not found in leader, but it is not in archived state."
@@ -1253,7 +1253,7 @@ def verify_project_is_deleted(project_name, auth_info):
                 if (
                     bg_task
                     and bg_task.status.state
-                    == mlrun.common.schemas.BackgroundTaskState.failed
+                    == schemas.BackgroundTaskState.failed
                 ):
                     # Background task failed, stop retrying
                     raise mlrun.errors.MLRunFatalFailureError(
@@ -1280,7 +1280,7 @@ def create_function_deletion_background_task(
     db_session: sqlalchemy.orm.Session,
     project_name: str,
     function_name: str,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
 ):
     background_task_name = str(uuid.uuid4())
 
@@ -1305,7 +1305,7 @@ async def _delete_function(
     db_session: sqlalchemy.orm.Session,
     project: str,
     function_name: str,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     background_task_name: str,
 ):
     # getting all function tags
@@ -1380,7 +1380,7 @@ async def _delete_application_source_artifacts(
     db_session: sqlalchemy.orm.Session,
     project: str,
     function_name: str,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
 ):
     """
     Delete source artifacts associated with an application runtime function.

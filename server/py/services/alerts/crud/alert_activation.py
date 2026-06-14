@@ -17,10 +17,10 @@ from typing import Union
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas.alert
 import mlrun.utils.singleton
 
 import framework.utils.singletons.db
+import schemas.alert
 
 
 class AlertActivation(
@@ -29,8 +29,8 @@ class AlertActivation(
     def store_alert_activation(
         self,
         session: sqlalchemy.orm.Session,
-        alert_data: mlrun.common.schemas.AlertConfig,
-        event_data: mlrun.common.schemas.Event,
+        alert_data: schemas.AlertConfig,
+        event_data: schemas.Event,
     ) -> int:
         return framework.utils.singletons.db.get_db().store_alert_activation(
             session, alert_data, event_data
@@ -42,7 +42,7 @@ class AlertActivation(
         activation_id: int,
         activation_time: datetime.datetime,
         number_of_events: int | None = None,
-        notifications_states: list[mlrun.common.schemas.NotificationState]
+        notifications_states: list[schemas.NotificationState]
         | None = None,
         update_reset_time: bool = False,
     ):
@@ -63,14 +63,14 @@ class AlertActivation(
         since: datetime.datetime | None = None,
         until: datetime.datetime | None = None,
         entity: str | None = None,
-        severity: list[Union[mlrun.common.schemas.alert.AlertSeverity, str]]
+        severity: list[Union[schemas.alert.AlertSeverity, str]]
         | None = None,
-        entity_kind: Union[mlrun.common.schemas.alert.EventEntityKind, str]
+        entity_kind: Union[schemas.alert.EventEntityKind, str]
         | None = None,
-        event_kind: Union[mlrun.common.schemas.alert.EventKind, str] | None = None,
+        event_kind: Union[schemas.alert.EventKind, str] | None = None,
         offset: int | None = None,
         limit: int | None = None,
-    ) -> list[mlrun.common.schemas.AlertActivation]:
+    ) -> list[schemas.AlertActivation]:
         return framework.utils.singletons.db.get_db().list_alert_activations(
             session=session,
             projects_with_creation_time=projects_with_creation_time,
@@ -89,7 +89,7 @@ class AlertActivation(
         self,
         session: sqlalchemy.orm.Session,
         activation_id: int,
-    ) -> mlrun.common.schemas.AlertActivation:
+    ) -> schemas.AlertActivation:
         return framework.utils.singletons.db.get_db().get_alert_activation(
             session=session,
             activation_id=activation_id,

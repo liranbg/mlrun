@@ -23,9 +23,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas as schemas
-import mlrun.common.schemas.model_monitoring.constants as mm_constants
-import mlrun.common.schemas.model_monitoring.model_endpoints as mm_endpoints
 import mlrun.model_monitoring
 import mlrun.utils.helpers
 from mlrun import MLRunInvalidArgumentError
@@ -34,6 +31,9 @@ from mlrun.utils import logger
 
 import framework.api.deps
 import framework.utils.auth.verifier
+import schemas as schemas
+import schemas.model_monitoring.constants as mm_constants
+import schemas.model_monitoring.model_endpoints as mm_endpoints
 import services.api.common.constants as api_constants
 import services.api.crud
 from framework.api import deps

@@ -14,8 +14,9 @@
 
 import mlrun
 import mlrun.auth.utils
-import mlrun.common.schemas
 import mlrun.utils.singleton
+
+import schemas
 
 
 class Client(
@@ -29,7 +30,7 @@ class Client(
     """
 
     _SERVICE_ACCOUNT_AUTHENTICATION_HEADER = {
-        mlrun.common.schemas.HeaderNames.igz_authenticator_kind: "sa",
+        schemas.HeaderNames.igz_authenticator_kind: "sa",
     }
 
     _TOKEN_PATH = mlrun.mlconf.httpdb.authentication.service_account.token_path

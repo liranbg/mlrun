@@ -15,8 +15,7 @@
 
 import fastapi
 
-import mlrun.common.schemas
-
+import schemas
 import services.api.utils.memory_reports
 
 router = fastapi.APIRouter(prefix="/memory-reports")
@@ -24,16 +23,16 @@ router = fastapi.APIRouter(prefix="/memory-reports")
 
 @router.get(
     "/common-types",
-    response_model=mlrun.common.schemas.MostCommonObjectTypesReport,
+    response_model=schemas.MostCommonObjectTypesReport,
 )
 def get_most_common_objects_report():
     report = services.api.utils.memory_reports.MemoryUsageReport().create_most_common_objects_report()
-    return mlrun.common.schemas.MostCommonObjectTypesReport(object_types=report)
+    return schemas.MostCommonObjectTypesReport(object_types=report)
 
 
 @router.get(
     "/{object_type}",
-    response_model=mlrun.common.schemas.ObjectTypeReport,
+    response_model=schemas.ObjectTypeReport,
 )
 def get_memory_usage_report(
     object_type: str,
@@ -45,7 +44,7 @@ def get_memory_usage_report(
     report = services.api.utils.memory_reports.MemoryUsageReport().create_memory_usage_report(
         object_type, sample_size, start_index, create_graph, max_depth
     )
-    return mlrun.common.schemas.ObjectTypeReport(
+    return schemas.ObjectTypeReport(
         object_type=object_type,
         sample_size=sample_size,
         start_index=start_index,

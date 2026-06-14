@@ -27,7 +27,6 @@ from iguazio.schemas import (
 )
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.common.types
 import mlrun.errors
 from mlrun.utils import get_in
@@ -35,6 +34,7 @@ from mlrun.utils import get_in
 import framework.utils.clients.helpers as clients_helpers
 import framework.utils.clients.service_account_token as service_account_token
 import framework.utils.projects.remotes.follower as project_follower
+import schemas
 from framework.utils.clients.iguazio.base import BaseAsyncClient, BaseClient
 
 _GROUP_TYPE_KEY = "@type"
@@ -53,7 +53,7 @@ class Client(BaseClient, project_follower.Member):
         )
 
     def refresh_access_token(
-        self, secret_token: mlrun.common.schemas.SecretToken
+        self, secret_token: schemas.SecretToken
     ) -> None:
         """
         Refreshes the access token by validating the provided token via the Iguazio client.
@@ -91,7 +91,7 @@ class Client(BaseClient, project_follower.Member):
         )
 
     def refresh_access_tokens(
-        self, secret_tokens: list[mlrun.common.schemas.SecretToken]
+        self, secret_tokens: list[schemas.SecretToken]
     ) -> None:
         """
         Refresh all offline tokens using the Iguazio client to validate them.
@@ -160,7 +160,7 @@ class Client(BaseClient, project_follower.Member):
     def get_user_id_by_username(
         self,
         username: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ) -> str:
         """
         Translate a username to user_id by querying the Iguazio management API.
@@ -250,8 +250,8 @@ class Client(BaseClient, project_follower.Member):
     def create_project(
         self,
         session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         self._logger.debug("Creating default project policies in Iguazio")
 
@@ -276,8 +276,8 @@ class Client(BaseClient, project_follower.Member):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         self._logger.debug(
             "Ensuring default project policies exist in Iguazio", project=name
@@ -315,8 +315,8 @@ class Client(BaseClient, project_follower.Member):
         session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         self._logger.debug("Updating project owner in Iguazio")
 
@@ -341,10 +341,10 @@ class Client(BaseClient, project_follower.Member):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
-        if deletion_strategy == mlrun.common.schemas.DeletionStrategy.check:
+        if deletion_strategy == schemas.DeletionStrategy.check:
             return
 
         self._logger.debug("Deleting project policies in Iguazio")
@@ -363,47 +363,47 @@ class Client(BaseClient, project_follower.Member):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         raise NotImplementedError("Getting a project is not supported")
 
     def list_projects(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: mlrun.common.formatters.ProjectFormat = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         # TODO: This is a placeholder implementation, as it is used for project sync. Implement this method as needed
         #       when we support the project sync functionality with Iguazio 4.
-        return mlrun.common.schemas.ProjectsOutput(projects=[])
+        return schemas.ProjectsOutput(projects=[])
 
     def list_project_summaries(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         raise NotImplementedError("Listing project summaries is not supported")
 
     def get_project_summary(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         raise NotImplementedError("Get project summary is not supported")
 
     def prepare_create_project(
         self,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError
@@ -432,13 +432,13 @@ class Client(BaseClient, project_follower.Member):
     def update_project_follower(
         self,
         name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError
 
     def _project_policies_exist(
-        self, project: str, auth_info: mlrun.common.schemas.AuthInfo
+        self, project: str, auth_info: schemas.AuthInfo
     ) -> bool:
         try:
             with self._client.with_headers(
@@ -495,18 +495,18 @@ class Client(BaseClient, project_follower.Member):
         self,
         response_headers: typing.Mapping[str, typing.Any],
         response_body: typing.Mapping[typing.Any, typing.Any],
-    ) -> mlrun.common.schemas.AuthInfo:
+    ) -> schemas.AuthInfo:
         """
         Extract and return AuthInfo from a valid session verification response.
         """
         username, user_id, group_ids, resource_type = self._parse_auth_response_data(
             response_body
         )
-        return mlrun.common.schemas.AuthInfo(
+        return schemas.AuthInfo(
             username=username,
             user_id=user_id,
             user_group_ids=group_ids,
-            kind=mlrun.common.schemas.AuthInfoKind(resource_type),
+            kind=schemas.AuthInfoKind(resource_type),
         )
 
     @property
@@ -521,12 +521,12 @@ class Client(BaseClient, project_follower.Member):
         headers = kwargs.setdefault("headers", {})
 
         # Accept an Authorization header or a session cookie named "_oauth2_proxy"
-        authorization = headers.get(mlrun.common.schemas.HeaderNames.authorization, "")
-        cookie = headers.get(mlrun.common.schemas.HeaderNames.cookie, "")
+        authorization = headers.get(schemas.HeaderNames.authorization, "")
+        cookie = headers.get(schemas.HeaderNames.cookie, "")
 
         if (
             not authorization
-            and mlrun.common.schemas.CookieNames.oauth2_proxy not in cookie
+            and schemas.CookieNames.oauth2_proxy not in cookie
         ):
             raise mlrun.errors.MLRunUnauthorizedError(
                 "Request must include either an Authorization header or _oauth2_proxy cookie"
@@ -601,7 +601,7 @@ class Client(BaseClient, project_follower.Member):
         resource_type = get_in(
             response_body,
             "metadata.resourceType",
-            mlrun.common.schemas.AuthInfoKind.user,
+            schemas.AuthInfoKind.user,
         )
 
         relationships = response_body.get("relationships")

@@ -18,7 +18,6 @@ import typing
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun.config import config as mlconfig
 from mlrun.utils import logger
@@ -29,6 +28,7 @@ import framework.utils.helpers
 import framework.utils.lru_cache
 import framework.utils.notifications.notification_pusher as notification_pusher
 import framework.utils.singletons.db
+import schemas
 import services.alerts.crud
 
 
@@ -44,9 +44,9 @@ class Alerts(
         session: sqlalchemy.orm.Session,
         project: str,
         name: str,
-        alert_data: mlrun.common.schemas.AlertConfig,
+        alert_data: schemas.AlertConfig,
         force_reset: bool = False,
-    ) -> mlrun.common.schemas.AlertConfig:
+    ) -> schemas.AlertConfig:
         existing_alert, existing_alert_state = (
             framework.utils.singletons.db.get_db().get_alert(
                 session, project, name, with_state=True
@@ -55,7 +55,7 @@ class Alerts(
 
         self._validate_alert(alert_data, name, project)
         alert_data.criteria = (
-            alert_data.criteria or mlrun.common.schemas.alert.AlertCriteria()
+            alert_data.criteria or schemas.alert.AlertCriteria()
         )
 
         if existing_alert is not None:
@@ -104,7 +104,7 @@ class Alerts(
         exclude_updated: bool = False,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> list[mlrun.common.schemas.AlertConfig]:
+    ) -> list[schemas.AlertConfig]:
         return framework.utils.singletons.db.get_db().list_alerts(
             session=session,
             project=project,
@@ -119,7 +119,7 @@ class Alerts(
         project: str,
         name: str,
         exclude_updated: bool = False,
-    ) -> mlrun.common.schemas.AlertConfig:
+    ) -> schemas.AlertConfig:
         alert, state = framework.utils.singletons.db.get_db().get_alert(
             session=session, project=project, name=name, with_state=True
         )
@@ -179,7 +179,7 @@ class Alerts(
         self,
         session: sqlalchemy.orm.Session,
         alert_id: int,
-        event_data: mlrun.common.schemas.Event,
+        event_data: schemas.Event,
     ):
         alert = self._get_alert_by_id_cached()(session, alert_id)
         state = self._get_alert_state_cached()(session, alert_id)
@@ -236,14 +236,14 @@ class Alerts(
                 "Error populating alert caches. Transitioning state to offline!",
                 exc=mlrun.errors.err_to_str(exc),
             )
-            mlconfig.httpdb.state = mlrun.common.schemas.APIStates.offline
+            mlconfig.httpdb.state = schemas.APIStates.offline
             return
 
         services.alerts.crud.Events().cache_initialized = True
         logger.debug("Finished populating event cache")
 
     def _should_send_notification(
-        self, alert: mlrun.common.schemas.AlertConfig, state_obj: dict
+        self, alert: schemas.AlertConfig, state_obj: dict
     ) -> bool:
         if alert.criteria.period:
             offset = self._get_event_offset(alert)
@@ -260,18 +260,18 @@ class Alerts(
         return len(state_obj["event_timestamps"])
 
     @staticmethod
-    def _get_event_offset(alert: mlrun.common.schemas.AlertConfig) -> int:
-        if alert.entities.kind == mlrun.common.schemas.alert.EventEntityKind.JOB:
+    def _get_event_offset(alert: schemas.AlertConfig) -> int:
+        if alert.entities.kind == schemas.alert.EventEntityKind.JOB:
             return int(mlconfig.monitoring.runs.interval)
         return 0
 
     def _handle_notification(
         self,
         session: sqlalchemy.orm.Session,
-        alert: mlrun.common.schemas.AlertConfig,
+        alert: schemas.AlertConfig,
         state: dict,
         state_obj: dict,
-        event_data: mlrun.common.schemas.Event,
+        event_data: schemas.Event,
     ) -> bool:
         keep_cache = True
         active = False
@@ -300,7 +300,7 @@ class Alerts(
         # AUTO without cooldown: reset before notification delivery so the alert can fire again on the next event.
         # With cooldown, reset is deferred until the cooldown period elapses
         if (
-            alert.reset_policy == mlrun.common.schemas.alert.ResetPolicy.AUTO
+            alert.reset_policy == schemas.alert.ResetPolicy.AUTO
             and cooldown_td is None
         ):
             logger.debug("Resetting alert before sending notification", **log_kwargs)
@@ -314,7 +314,7 @@ class Alerts(
         # MANUAL alerts stay active until explicitly reset; cooldown alerts stay active until the cooldown elapses.
         # last_activation_id is stored so it can be updated when the alert is eventually reset.
         if (
-            alert.reset_policy == mlrun.common.schemas.alert.ResetPolicy.MANUAL
+            alert.reset_policy == schemas.alert.ResetPolicy.MANUAL
             or cooldown_td is not None
         ):
             active = True
@@ -385,7 +385,7 @@ class Alerts(
         self,
         session: sqlalchemy.orm.Session,
         event_name: str,
-        event_data: mlrun.common.schemas.Event,
+        event_data: schemas.Event,
     ):
         for alert in framework.utils.singletons.db.get_db().get_all_alerts(session):
             for config_event_name in alert.trigger.events:
@@ -405,7 +405,7 @@ class Alerts(
 
     def _validate_alert(
         self,
-        alert: mlrun.common.schemas.AlertConfig,
+        alert: schemas.AlertConfig,
         name: str,
         project: str,
     ):
@@ -428,7 +428,7 @@ class Alerts(
     def _validate_alert_criteria(
         project: str,
         name: str,
-        criteria: mlrun.common.schemas.AlertCriteria,
+        criteria: schemas.AlertCriteria,
     ):
         """
         Validate the alert criteria, ensuring:
@@ -456,7 +456,7 @@ class Alerts(
     def _validate_alert_notifications(
         project: str,
         name: str,
-        notifications: list[mlrun.common.schemas.AlertNotification],
+        notifications: list[schemas.AlertNotification],
     ):
         """
         Validate the notifications configured for the alert, ensuring:
@@ -464,7 +464,7 @@ class Alerts(
         - Each notification's structure adheres to the defined notification schema.
         - If a cooldown period is specified, it must be a valid time string.
         """
-        valid_kinds = mlrun.common.schemas.NotificationKind.alert_notification_kinds()
+        valid_kinds = schemas.NotificationKind.alert_notification_kinds()
         for alert_notification in notifications:
             if alert_notification.notification.kind not in valid_kinds:
                 raise mlrun.errors.MLRunBadRequestError(
@@ -491,7 +491,7 @@ class Alerts(
     def _validate_alert_cooldown_period(
         project: str,
         name: str,
-        alert: mlrun.common.schemas.AlertConfig,
+        alert: schemas.AlertConfig,
     ):
         """
         Validate the cooldown_period field on AlertConfig:
@@ -517,7 +517,7 @@ class Alerts(
             return
 
         # cooldown_td is > 0 beyond this point
-        if alert.reset_policy == mlrun.common.schemas.alert.ResetPolicy.MANUAL:
+        if alert.reset_policy == schemas.alert.ResetPolicy.MANUAL:
             raise mlrun.errors.MLRunBadRequestError(
                 f"cooldown_period is not allowed when reset_policy=manual "
                 f"for alert {name} for project {project}"
@@ -536,8 +536,8 @@ class Alerts(
         self,
         session: sqlalchemy.orm.Session,
         project: str,
-        existing_alert: mlrun.common.schemas.AlertConfig,
-        alert_data: mlrun.common.schemas.AlertConfig,
+        existing_alert: schemas.AlertConfig,
+        alert_data: schemas.AlertConfig,
         alert_state: framework.db.sqldb.models.AlertState,
     ):
         """
@@ -562,9 +562,9 @@ class Alerts(
         alert_data.updated = mlrun.utils.now_date()
 
         # Enrich the old alert with existing state
-        existing_alert.state = mlrun.common.schemas.AlertActiveState.INACTIVE
+        existing_alert.state = schemas.AlertActiveState.INACTIVE
         if alert_state and alert_state.to_dict()["active"]:
-            existing_alert.state = mlrun.common.schemas.AlertActiveState.ACTIVE
+            existing_alert.state = schemas.AlertActiveState.ACTIVE
 
     @staticmethod
     def _check_alerts_limit(session: sqlalchemy.orm.Session):
@@ -581,7 +581,7 @@ class Alerts(
 
     @staticmethod
     def _add_event_configurations(
-        project: str, alert: mlrun.common.schemas.AlertConfig
+        project: str, alert: schemas.AlertConfig
     ):
         """
         Add event configurations for a given alert
@@ -593,7 +593,7 @@ class Alerts(
 
     @staticmethod
     def _remove_event_configurations(
-        project: str, alert: mlrun.common.schemas.AlertConfig
+        project: str, alert: schemas.AlertConfig
     ):
         """
         Remove event configurations for a given alert
@@ -608,8 +608,8 @@ class Alerts(
         session: sqlalchemy.orm.Session,
         project: str,
         name: str,
-        existing_alert: mlrun.common.schemas.AlertConfig,
-        alert_data: mlrun.common.schemas.AlertConfig,
+        existing_alert: schemas.AlertConfig,
+        alert_data: schemas.AlertConfig,
         force_reset: bool,
     ):
         """
@@ -684,7 +684,7 @@ class Alerts(
             )
         )
         if (
-            alert.reset_policy == mlrun.common.schemas.alert.ResetPolicy.MANUAL
+            alert.reset_policy == schemas.alert.ResetPolicy.MANUAL
             or has_cooldown
         ):
             self._update_alert_activation_on_reset(
@@ -736,7 +736,7 @@ class Alerts(
         self,
         session: sqlalchemy.orm.Session,
         project: str,
-        alert: mlrun.common.schemas.AlertConfig,
+        alert: schemas.AlertConfig,
     ) -> None:
         # we get the state from the DB and not from the cache, so it will have the updated activation id
         alert_state = framework.utils.singletons.db.get_db().get_alert_state_dict(
@@ -780,8 +780,8 @@ class Alerts(
 
     @staticmethod
     def _should_reset_alert(
-        old_alert_data: mlrun.common.schemas.AlertConfig,
-        alert_data: mlrun.common.schemas.AlertConfig,
+        old_alert_data: schemas.AlertConfig,
+        alert_data: schemas.AlertConfig,
         force_reset: bool,
     ):
         if force_reset:
@@ -791,9 +791,9 @@ class Alerts(
         old_reset_policy = getattr(old_alert_data, "reset_policy")
         new_reset_policy = getattr(alert_data, "reset_policy")
         if (
-            old_alert_data.state == mlrun.common.schemas.AlertActiveState.ACTIVE
-            and old_reset_policy == mlrun.common.schemas.alert.ResetPolicy.MANUAL
-            and new_reset_policy == mlrun.common.schemas.alert.ResetPolicy.AUTO
+            old_alert_data.state == schemas.AlertActiveState.ACTIVE
+            and old_reset_policy == schemas.alert.ResetPolicy.MANUAL
+            and new_reset_policy == schemas.alert.ResetPolicy.AUTO
         ):
             return True, "reset-policy changed from manual to auto"
 
@@ -807,16 +807,16 @@ class Alerts(
         return False, None
 
     @staticmethod
-    def _delete_notifications(alert: mlrun.common.schemas.AlertConfig):
+    def _delete_notifications(alert: schemas.AlertConfig):
         for notification in alert.notifications:
             framework.utils.notifications.delete_notification_params_secret(
                 alert.project, notification.notification
             )
 
     @staticmethod
-    def _validate_and_mask_notifications(alert_data: mlrun.common.schemas.AlertConfig):
+    def _validate_and_mask_notifications(alert_data: schemas.AlertConfig):
         notifications = [
-            mlrun.common.schemas.notification.Notification(**notification.to_dict())
+            schemas.notification.Notification(**notification.to_dict())
             for notification in framework.utils.notifications.validate_and_mask_notification_list(
                 alert_data.get_raw_notifications(), None, alert_data.project
             )
@@ -826,7 +826,7 @@ class Alerts(
         ]
 
         alert_data.notifications = [
-            mlrun.common.schemas.alert.AlertNotification(
+            schemas.alert.AlertNotification(
                 cooldown_period=cooldown, notification=notification
             )
             for cooldown, notification in zip(cooldowns, notifications)

@@ -22,19 +22,19 @@ import uuid
 import fastapi
 import fastapi.concurrency
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 from mlrun.utils import logger
 
 import framework.utils.background_tasks.common
 import framework.utils.helpers
+import schemas
 
 
 class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
     def __init__(self):
         self._internal_background_tasks: dict[
-            str, mlrun.common.schemas.BackgroundTask
+            str, schemas.BackgroundTask
         ] = {}
 
         # contains a lock for each background task kind, with the following format:
@@ -80,7 +80,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         self,
         name: str | None = None,
         kind: str | None = None,
-    ) -> list[mlrun.common.schemas.BackgroundTask]:
+    ) -> list[schemas.BackgroundTask]:
         if name:
             background_task = self.get_background_task(name)
             return (
@@ -113,7 +113,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         self,
         name: str,
         raise_on_not_found: bool = False,
-    ) -> mlrun.common.schemas.BackgroundTask:
+    ) -> schemas.BackgroundTask:
         """
         :return: returns the background task object and bool whether exists
         """
@@ -126,7 +126,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
             ):
                 self._update_background_task(
                     name,
-                    mlrun.common.schemas.BackgroundTaskState.failed,
+                    schemas.BackgroundTaskState.failed,
                     error="Timeout exceeded",
                 )
                 self._finish_active_task(name)
@@ -141,7 +141,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         self,
         kind: str,
         raise_on_not_found: bool = False,
-    ) -> mlrun.common.schemas.BackgroundTask | None:
+    ) -> schemas.BackgroundTask | None:
         name = self._get_active_task_name_by_kind(kind)
         if name:
             return self.get_background_task(name, raise_on_not_found=raise_on_not_found)
@@ -157,7 +157,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         self,
         kind: str,
         raise_on_not_found: bool = False,
-    ) -> mlrun.common.schemas.BackgroundTask | None:
+    ) -> schemas.BackgroundTask | None:
         name = self._get_previous_task_name_by_kind(kind)
         if name:
             return self.get_background_task(name, raise_on_not_found=raise_on_not_found)
@@ -171,7 +171,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
     @framework.utils.helpers.ensure_running_on_chief
     async def background_task_wrapper(
         self,
-        background_task: mlrun.common.schemas.BackgroundTask,
+        background_task: schemas.BackgroundTask,
         function,
         *args,
         **kwargs,
@@ -194,13 +194,13 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
             )
             self._update_background_task(
                 background_task.metadata.name,
-                mlrun.common.schemas.BackgroundTaskState.failed,
+                schemas.BackgroundTaskState.failed,
                 error=err_str,
             )
         else:
             self._update_background_task(
                 background_task.metadata.name,
-                mlrun.common.schemas.BackgroundTaskState.succeeded,
+                schemas.BackgroundTaskState.succeeded,
             )
         finally:
             self._finish_active_task(background_task.metadata.name)
@@ -208,7 +208,7 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
     def _update_background_task(
         self,
         name: str,
-        state: mlrun.common.schemas.BackgroundTaskState,
+        state: schemas.BackgroundTaskState,
         error: str | None = None,
     ):
         background_task = self._internal_background_tasks[name]
@@ -223,13 +223,13 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         # in order to keep things simple we don't persist the internal background tasks to the DB
         # If for some reason get is called and the background task doesn't exist, it means that probably we got
         # restarted, therefore we want to return a failed background task so the client will retry (if needed)
-        return mlrun.common.schemas.BackgroundTask(
-            metadata=mlrun.common.schemas.BackgroundTaskMetadata(
+        return schemas.BackgroundTask(
+            metadata=schemas.BackgroundTaskMetadata(
                 name=name, project=project
             ),
-            spec=mlrun.common.schemas.BackgroundTaskSpec(),
-            status=mlrun.common.schemas.BackgroundTaskStatus(
-                state=mlrun.common.schemas.BackgroundTaskState.failed,
+            spec=schemas.BackgroundTaskSpec(),
+            status=schemas.BackgroundTaskStatus(
+                state=schemas.BackgroundTaskState.failed,
                 error="Background task not found",
             ),
         )
@@ -240,19 +240,19 @@ class InternalBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         kind: str,
         timeout: int | None = None,
         project_name: str | None = None,
-    ) -> mlrun.common.schemas.BackgroundTask:
+    ) -> schemas.BackgroundTask:
         now = datetime.datetime.utcnow()
-        metadata = mlrun.common.schemas.BackgroundTaskMetadata(
+        metadata = schemas.BackgroundTaskMetadata(
             name=name, kind=kind, created=now, updated=now, project=project_name
         )
         if timeout and mlrun.mlconf.background_tasks.timeout_mode == "enabled":
             metadata.timeout = int(timeout)
 
-        spec = mlrun.common.schemas.BackgroundTaskSpec()
-        status = mlrun.common.schemas.BackgroundTaskStatus(
-            state=mlrun.common.schemas.BackgroundTaskState.running
+        spec = schemas.BackgroundTaskSpec()
+        status = schemas.BackgroundTaskStatus(
+            state=schemas.BackgroundTaskState.running
         )
-        return mlrun.common.schemas.BackgroundTask(
+        return schemas.BackgroundTask(
             metadata=metadata, spec=spec, status=status
         )
 

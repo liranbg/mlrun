@@ -16,10 +16,11 @@ import fastapi
 import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
+import mlrun.errors
 
 import framework.api.deps
 import framework.utils.auth.verifier
+import schemas
 import services.api.crud
 
 router = fastapi.APIRouter()
@@ -31,16 +32,16 @@ async def store_log(
     project: str,
     uid: str,
     append: bool = True,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.log,
+            schemas.AuthorizationResourceTypes.log,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -62,7 +63,7 @@ async def get_log(
     size: int = -1,
     offset: int = 0,
     attempt: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -75,10 +76,10 @@ async def get_log(
         )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.log,
+            schemas.AuthorizationResourceTypes.log,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -101,7 +102,7 @@ async def get_log_size(
     project: str,
     uid: str,
     attempt: int = 0,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -110,10 +111,10 @@ async def get_log_size(
 ):
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.log,
+            schemas.AuthorizationResourceTypes.log,
             project,
             uid,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )

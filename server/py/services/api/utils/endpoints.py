@@ -16,10 +16,10 @@ import fastapi
 import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
 from mlrun.runtimes import RuntimeKinds
 from mlrun.utils import logger
 
+import schemas
 import services.api.crud.model_monitoring.deployment as mm_deployment
 
 
@@ -31,7 +31,7 @@ async def start_model_endpoint_creation_background_task(
     db_session: sqlalchemy.orm.Session,
     is_batch: bool,
 ):
-    returned_background_tasks = mlrun.common.schemas.BackgroundTaskList(
+    returned_background_tasks = schemas.BackgroundTaskList(
         background_tasks=[]
     )
     model_endpoints_instructions = []

@@ -15,7 +15,6 @@
 import mimetypes
 from http import HTTPStatus
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 from mlrun import store_manager
 from mlrun.errors import err_to_str
@@ -24,6 +23,7 @@ from mlrun.utils import logger
 import framework.api.utils
 import framework.utils.auth.verifier
 import framework.utils.singletons.k8s
+import schemas
 import services.api.crud
 
 
@@ -32,7 +32,7 @@ class Files(
 ):
     def get_filestat(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         path: str = "",
         schema: str | None = None,
         user: str | None = None,
@@ -42,7 +42,7 @@ class Files(
 
     def delete_artifact_data(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         project: str,
         path: str = "",
         schema: str | None = None,
@@ -72,7 +72,7 @@ class Files(
         schema: str,
         path: str,
         user: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         secrets: dict | None = None,
     ):
         path = self._resolve_obj_path(schema, path, user)
@@ -103,7 +103,7 @@ class Files(
         schema: str,
         path: str,
         user: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         secrets: dict | None = None,
         project: str = "",
     ):
@@ -115,7 +115,7 @@ class Files(
 
     @staticmethod
     def _enrich_secrets_with_auth_info(
-        auth_info: mlrun.common.schemas.AuthInfo, secrets: dict | None = None
+        auth_info: schemas.AuthInfo, secrets: dict | None = None
     ):
         """
         Update user-provided secrets with auth_info (user-provided secrets take precedence)
@@ -145,7 +145,7 @@ class Files(
 
         secrets_data = services.api.crud.Secrets().list_project_secrets(
             project,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretProviderName.kubernetes,
             allow_secrets_from_k8s=True,
         )
         return secrets_data.secrets or {}

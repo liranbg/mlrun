@@ -19,9 +19,9 @@ import uuid
 import sqlalchemy.orm
 
 import mlrun.common.formatters
-import mlrun.common.schemas
 
 import framework.utils.project_formats
+import schemas
 
 
 class Member(abc.ABC):
@@ -29,8 +29,8 @@ class Member(abc.ABC):
     def create_project(
         self,
         session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         pass
 
@@ -39,8 +39,8 @@ class Member(abc.ABC):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         pass
 
@@ -50,8 +50,8 @@ class Member(abc.ABC):
         session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         pass
 
@@ -60,8 +60,8 @@ class Member(abc.ABC):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         pass
 
@@ -70,34 +70,34 @@ class Member(abc.ABC):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         pass
 
     @abc.abstractmethod
     def list_projects(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: framework.utils.project_formats.ProjectFormatType = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         pass
 
     @abc.abstractmethod
     def list_project_summaries(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         pass
 
     @abc.abstractmethod
@@ -105,8 +105,8 @@ class Member(abc.ABC):
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         pass
 
     # ----- 2PC follower hooks ----------------------------------------------
@@ -119,7 +119,7 @@ class Member(abc.ABC):
     @abc.abstractmethod
     def prepare_create_project(
         self,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         pass
@@ -152,7 +152,7 @@ class Member(abc.ABC):
     def update_project_follower(
         self,
         name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         pass

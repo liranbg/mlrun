@@ -35,9 +35,6 @@ from fastapi.concurrency import run_in_threadpool
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.formatters
 import mlrun.common.model_monitoring.helpers
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.constants as mm_constants
-import mlrun.common.schemas.model_monitoring.functions as mm_functions
 import mlrun.datastore.datastore_profile
 import mlrun.model_monitoring
 import mlrun.model_monitoring.api
@@ -65,6 +62,9 @@ import framework.db.session
 import framework.utils.background_tasks
 import framework.utils.clients.async_nuclio
 import framework.utils.singletons.k8s
+import schemas
+import schemas.model_monitoring.constants as mm_constants
+import schemas.model_monitoring.functions as mm_functions
 import services.api.crud
 import services.api.crud.model_monitoring.helpers
 
@@ -111,7 +111,7 @@ class MonitoringDeployment:
     def __init__(
         self,
         project: str,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
         db_session: sqlalchemy.orm.Session | None = None,
         model_monitoring_access_key: str | None = None,
         parquet_batching_max_events: int = mlrun.mlconf.model_endpoint_monitoring.parquet_batching_max_events,
@@ -287,7 +287,7 @@ class MonitoringDeployment:
             session=self.db_session,
             name=self.project,
             project={"spec": {"model_monitoring": fields}},
-            patch_mode=mlrun.common.schemas.PatchMode.additive,
+            patch_mode=schemas.PatchMode.additive,
         )
 
     def deploy_model_monitoring_stream_processing(
@@ -1101,7 +1101,7 @@ class MonitoringDeployment:
         :return:              False if the function is deployed/deploying, True otherwise.
         """
         return self._get_function_state(function_name) not in (
-            mlrun.common.schemas.FunctionState.ready,
+            schemas.FunctionState.ready,
             "building",  # see ML-9903
         )
 
@@ -1220,7 +1220,7 @@ class MonitoringDeployment:
         include_infra: bool = True,
         include_processed_model_endpoints: bool = False,
         agg_stream_stats: bool = True,
-    ) -> list[mlrun.common.schemas.model_monitoring.FunctionSummary]:
+    ) -> list[schemas.model_monitoring.FunctionSummary]:
         """
         Retrieve a list of all the model monitoring functions with their summaries. Note that the response includes
         both monitoring application real time functions and monitoring infrastructure functions.
@@ -1287,7 +1287,7 @@ class MonitoringDeployment:
         start: datetime | None = None,
         end: datetime | None = None,
         include_latest_metrics: bool = False,
-    ) -> mlrun.common.schemas.model_monitoring.FunctionSummary:
+    ) -> schemas.model_monitoring.FunctionSummary:
         """
         Retrieve a single model monitoring function summary by its name.
         :param name:                   The name of the model monitoring function to retrieve.
@@ -1338,7 +1338,7 @@ class MonitoringDeployment:
     def _get_function_summary_infra(
         self,
         enrich_with_infra: bool = True,
-    ) -> tuple[list[mlrun.common.schemas.model_monitoring.FunctionSummary], int]:
+    ) -> tuple[list[schemas.model_monitoring.FunctionSummary], int]:
         """
         Enrich the function summaries list with the model monitoring infrastructure functions.
         In addition, it returns the base period of the controller function.
@@ -1360,7 +1360,7 @@ class MonitoringDeployment:
                 logger.info("No model monitoring infrastructure functions found")
 
             for function in infra_mm_functions:
-                function_summary = mlrun.common.schemas.model_monitoring.FunctionSummary.from_function_dict(
+                function_summary = schemas.model_monitoring.FunctionSummary.from_function_dict(
                     function,
                     func_type="infra",
                 )
@@ -1390,7 +1390,7 @@ class MonitoringDeployment:
 
     async def _enrich_with_stream_stats(
         self,
-        function_summaries: list[mlrun.common.schemas.model_monitoring.FunctionSummary]
+        function_summaries: list[schemas.model_monitoring.FunctionSummary]
         | None,
         agg_stats: bool = True,
     ) -> None:
@@ -1416,7 +1416,7 @@ class MonitoringDeployment:
 
     async def _enrich_v3io_stream_stats(
         self,
-        function_summaries: list[mlrun.common.schemas.model_monitoring.FunctionSummary],
+        function_summaries: list[schemas.model_monitoring.FunctionSummary],
         agg_stats: bool = True,
     ) -> None:
         async with framework.utils.clients.async_nuclio.Client(
@@ -1467,7 +1467,7 @@ class MonitoringDeployment:
 
     def _enrich_kafka_topic_stats(
         self,
-        function_summaries: list[mlrun.common.schemas.model_monitoring.FunctionSummary],
+        function_summaries: list[schemas.model_monitoring.FunctionSummary],
         agg_stats: bool = True,
     ):
         import kafka
@@ -1542,7 +1542,7 @@ class MonitoringDeployment:
         labels: list[str] | None = None,
         include_stats: bool = True,
         include_processed_model_endpoints: bool = False,
-    ) -> list[mlrun.common.schemas.model_monitoring.FunctionSummary]:
+    ) -> list[schemas.model_monitoring.FunctionSummary]:
         """
         Return function summaries list with the model monitoring applications.
         """
@@ -1592,7 +1592,7 @@ class MonitoringDeployment:
             )
 
         for function in mm_functions_list:
-            function_summary = mlrun.common.schemas.model_monitoring.FunctionSummary.from_function_dict(
+            function_summary = schemas.model_monitoring.FunctionSummary.from_function_dict(
                 func_dict=function, base_period=base_period
             )
             function_summary.stats = {}
@@ -1638,7 +1638,7 @@ class MonitoringDeployment:
         delete_user_applications: bool = False,
         user_application_list: list[str] | None = None,
         background_tasks: fastapi.BackgroundTasks = None,
-    ) -> mlrun.common.schemas.BackgroundTaskList:
+    ) -> schemas.BackgroundTaskList:
         """
         Disable model monitoring application controller, writer, stream, histogram data drift application
         and the user's applications functions, according to the given params.
@@ -1673,7 +1673,7 @@ class MonitoringDeployment:
                 user_application_list,
             )
         )
-        tasks: list[mlrun.common.schemas.BackgroundTask] = []
+        tasks: list[schemas.BackgroundTask] = []
         for function_name in function_to_delete:
             if self._get_function_state(function_name):
                 task = await run_in_threadpool(
@@ -1694,7 +1694,7 @@ class MonitoringDeployment:
             otlp_enabled=False,
         )
 
-        return mlrun.common.schemas.BackgroundTaskList(background_tasks=tasks)
+        return schemas.BackgroundTaskList(background_tasks=tasks)
 
     def _get_monitoring_application_to_delete(
         self,
@@ -1757,7 +1757,7 @@ class MonitoringDeployment:
         background_tasks: BackgroundTasks,
         project_name: str,
         function_name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         delete_app_stream_resources: bool,
     ):
         background_task_name = str(uuid.uuid4())
@@ -1784,7 +1784,7 @@ class MonitoringDeployment:
         db_session: sqlalchemy.orm.Session,
         project: str,
         function_name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         background_task_name: str,
         delete_app_stream_resources: bool,
     ) -> None:
@@ -1969,7 +1969,7 @@ class MonitoringDeployment:
     def _get_monitoring_mandatory_project_secrets(self) -> dict[str, str]:
         credentials_dict = {
             key: mlrun.get_secret_or_env(key, secret_provider=self._secret_provider)
-            for key in mlrun.common.schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
+            for key in schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
         }
 
         return credentials_dict
@@ -2208,26 +2208,26 @@ class MonitoringDeployment:
         tsdb_profile = None
 
         stream_profile_name = stream_profile_name or old_secrets_dict.get(
-            mlrun.common.schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
+            schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
         )
         if stream_profile_name:
             stream_profile = self._validate_stream_profile(stream_profile_name)
             secrets_dict[
-                mlrun.common.schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
+                schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
             ] = stream_profile_name
 
         tsdb_profile_name = tsdb_profile_name or old_secrets_dict.get(
-            mlrun.common.schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
+            schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
         )
         if tsdb_profile_name:
             tsdb_profile = self._validate_and_get_tsdb_profile(tsdb_profile_name)
             secrets_dict[
-                mlrun.common.schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
+                schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
             ] = tsdb_profile_name
 
         # Check the cred are valid
         for key in (
-            mlrun.common.schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
+            schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
         ):
             if key not in secrets_dict:
                 raise mlrun.errors.MLRunInvalidMMStoreTypeError(
@@ -2239,8 +2239,8 @@ class MonitoringDeployment:
 
         services.api.crud.Secrets().store_project_secrets(
             project=self.project,
-            secrets=mlrun.common.schemas.SecretsData(
-                provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+            secrets=schemas.SecretsData(
+                provider=schemas.SecretProviderName.kubernetes,
                 secrets=secrets_dict,
             ),
         )
@@ -2257,11 +2257,11 @@ class MonitoringDeployment:
     ) -> bool:
         credentials_dict = {
             key: mlrun.get_secret_or_env(key, self._secret_provider)
-            for key in mlrun.common.schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
+            for key in schemas.model_monitoring.ProjectSecretKeys.mandatory_secrets()
         }
 
         old_stream_profile_name = credentials_dict[
-            mlrun.common.schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
+            schemas.model_monitoring.ProjectSecretKeys.STREAM_PROFILE_NAME
         ]
         if stream_profile_name and old_stream_profile_name != stream_profile_name:
             logger.debug(
@@ -2269,7 +2269,7 @@ class MonitoringDeployment:
             )
             return False
         old_tsdb_profile_name = credentials_dict[
-            mlrun.common.schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
+            schemas.model_monitoring.ProjectSecretKeys.TSDB_PROFILE_NAME
         ]
         if tsdb_profile_name and old_tsdb_profile_name != tsdb_profile_name:
             logger.debug(
@@ -2286,7 +2286,7 @@ class MonitoringDeployment:
         delete_background_task: fastapi.BackgroundTasks,
         model_endpoints_instructions: list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2340,7 +2340,7 @@ class MonitoringDeployment:
         semaphore: Semaphore,
         model_endpoints_instructions: list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2373,7 +2373,7 @@ class MonitoringDeployment:
     ) -> tuple[
         list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2398,7 +2398,7 @@ class MonitoringDeployment:
             )
         model_endpoints_instructions: list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ]
@@ -2452,7 +2452,7 @@ class MonitoringDeployment:
     ) -> tuple[
         list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2471,8 +2471,7 @@ class MonitoringDeployment:
         :raises MLRunPreconditionFailedError: if the model monitoring stream is not ready.
         :return: Tuple of (instructions, stream_url, function_dict).
         """
-        import mlrun.common.schemas.model_monitoring.model_endpoints as mm_endpoints
-
+        import schemas.model_monitoring.model_endpoints as mm_endpoints
         import services.api.crud.model_monitoring.helpers as mm_crud_helpers
 
         raw_instructions = (function.get("spec") or {}).get(
@@ -2561,7 +2560,7 @@ class MonitoringDeployment:
     ) -> tuple[
         list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2612,7 +2611,7 @@ class MonitoringDeployment:
         user_function_name: str | None = None,
     ) -> list[
         tuple[
-            mlrun.common.schemas.ModelEndpoint,
+            schemas.ModelEndpoint,
             mm_constants.ModelEndpointCreationStrategy,
         ]
     ]:
@@ -2637,7 +2636,7 @@ class MonitoringDeployment:
                     endpoint_name=route.name,
                 )
                 route.class_args[
-                    mlrun.common.schemas.MonitoringData.MODEL_ENDPOINT_UID
+                    schemas.MonitoringData.MODEL_ENDPOINT_UID
                 ] = uid
                 model_endpoints_instructions.append(
                     (
@@ -2653,10 +2652,10 @@ class MonitoringDeployment:
                             sampling_percentage=sampling_percentage,
                             uid=uid,
                             label_names=route.class_args.get(
-                                mlrun.common.schemas.MonitoringData.OUTPUTS
+                                schemas.MonitoringData.OUTPUTS
                             ),
                             model_path=route.class_args.get(
-                                mlrun.common.schemas.MonitoringData.MODEL_PATH, ""
+                                schemas.MonitoringData.MODEL_PATH, ""
                             ),
                         ),
                         route.model_endpoint_creation_strategy,
@@ -2681,7 +2680,7 @@ class MonitoringDeployment:
                 endpoint_name=router_step.name,
             )
             router_step.class_args[
-                mlrun.common.schemas.MonitoringData.MODEL_ENDPOINT_UID
+                schemas.MonitoringData.MODEL_ENDPOINT_UID
             ] = uid
             model_endpoints_instructions.append(
                 (
@@ -2717,7 +2716,7 @@ class MonitoringDeployment:
         user_function_name: str | None = None,
     ) -> list[
         tuple[
-            mlrun.common.schemas.ModelEndpoint,
+            schemas.ModelEndpoint,
             mm_constants.ModelEndpointCreationStrategy,
         ]
     ]:
@@ -2769,7 +2768,7 @@ class MonitoringDeployment:
                         endpoint_name=step.name,
                     )
                     step.class_args[
-                        mlrun.common.schemas.MonitoringData.MODEL_ENDPOINT_UID
+                        schemas.MonitoringData.MODEL_ENDPOINT_UID
                     ] = uid
                     model_endpoints_instructions.append(
                         (
@@ -2783,7 +2782,7 @@ class MonitoringDeployment:
                                 function_tag=function_tag,
                                 track_models=track_models,
                                 model_path=step.class_args.get(
-                                    mlrun.common.schemas.MonitoringData.MODEL_PATH, ""
+                                    schemas.MonitoringData.MODEL_PATH, ""
                                 ),
                                 uid=uid,
                             ),
@@ -2843,7 +2842,7 @@ class MonitoringDeployment:
         function: dict,
         model_endpoints_instructions: list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2903,7 +2902,7 @@ class MonitoringDeployment:
     ) -> tuple[
         list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -2970,7 +2969,7 @@ class MonitoringDeployment:
         label_names: list[str] | None = None,
         model_path: str | None = None,
         feature_names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ModelEndpoint:
+    ) -> schemas.ModelEndpoint:
         function_tag = function_tag or "latest"
         feature_names = (
             [fstore.api.norm_column_name(name) for name in feature_names]
@@ -2982,18 +2981,18 @@ class MonitoringDeployment:
             if label_names
             else []
         )
-        return mlrun.common.schemas.ModelEndpoint(
-            metadata=mlrun.common.schemas.ModelEndpointMetadata(
+        return schemas.ModelEndpoint(
+            metadata=schemas.ModelEndpointMetadata(
                 project=self.project,
                 name=name,
                 endpoint_type=endpoint_type,
                 uid=uid,
-                mode=mlrun.common.schemas.model_monitoring.EndpointMode.BATCH
+                mode=schemas.model_monitoring.EndpointMode.BATCH
                 if endpoint_type
-                == mlrun.common.schemas.model_monitoring.EndpointType.BATCH_EP
-                else mlrun.common.schemas.model_monitoring.EndpointMode.REAL_TIME,
+                == schemas.model_monitoring.EndpointType.BATCH_EP
+                else schemas.model_monitoring.EndpointMode.REAL_TIME,
             ),
-            spec=mlrun.common.schemas.ModelEndpointSpec(
+            spec=schemas.ModelEndpointSpec(
                 function_name=function_name,
                 function_tag=function_tag,
                 label_names=label_names,
@@ -3003,10 +3002,10 @@ class MonitoringDeployment:
                 model_path=model_path,
                 feature_names=feature_names,
             ),
-            status=mlrun.common.schemas.ModelEndpointStatus(
-                monitoring_mode=mlrun.common.schemas.model_monitoring.ModelMonitoringMode.enabled
+            status=schemas.ModelEndpointStatus(
+                monitoring_mode=schemas.model_monitoring.ModelMonitoringMode.enabled
                 if track_models
-                else mlrun.common.schemas.model_monitoring.ModelMonitoringMode.disabled,
+                else schemas.model_monitoring.ModelMonitoringMode.disabled,
                 sampling_percentage=sampling_percentage,
             ),
         )
@@ -3020,7 +3019,7 @@ class MonitoringDeployment:
         project_name: str,
         model_endpoints_instructions: list[
             tuple[
-                mlrun.common.schemas.ModelEndpoint,
+                schemas.ModelEndpoint,
                 mm_constants.ModelEndpointCreationStrategy,
             ]
         ],
@@ -3068,20 +3067,20 @@ class MonitoringDeployment:
         user_function_name: str | None = None,
     ) -> list[
         tuple[
-            mlrun.common.schemas.ModelEndpoint,
+            schemas.ModelEndpoint,
             mm_constants.ModelEndpointCreationStrategy,
         ]
     ]:
         model_endpoints_instructions = []
         monitoring_data = model_runner.class_args.get(
-            mlrun.common.schemas.ModelRunnerStepData.MONITORING_DATA, {}
+            schemas.ModelRunnerStepData.MONITORING_DATA, {}
         )
         for endpoint_name in model_runner.class_args.get(
-            mlrun.common.schemas.ModelRunnerStepData.MODELS, {}
+            schemas.ModelRunnerStepData.MODELS, {}
         ).keys():
             monitoring_data[endpoint_name] = monitoring_data[endpoint_name] or {}
             if monitoring_data[endpoint_name].get(
-                mlrun.common.schemas.MonitoringData.CREATION_STRATEGY
+                schemas.MonitoringData.CREATION_STRATEGY
             ) != mm_constants.ModelEndpointCreationStrategy.SKIP and (
                 (not user_function_name and not model_runner.function)
                 or model_runner.function == user_function_name
@@ -3092,15 +3091,15 @@ class MonitoringDeployment:
                     function_tag=function_tag,
                     model_endpoints_dict=model_endpoints_dict,
                     creation_strategy=monitoring_data[endpoint_name].get(
-                        mlrun.common.schemas.MonitoringData.CREATION_STRATEGY
+                        schemas.MonitoringData.CREATION_STRATEGY
                     ),
                     endpoint_name=endpoint_name,
                 )
                 # assign class args for the graph update:
                 model_runner.class_args[
-                    mlrun.common.schemas.ModelRunnerStepData.MONITORING_DATA
+                    schemas.ModelRunnerStepData.MONITORING_DATA
                 ][endpoint_name][
-                    mlrun.common.schemas.MonitoringData.MODEL_ENDPOINT_UID
+                    schemas.MonitoringData.MODEL_ENDPOINT_UID
                 ] = uid
                 model_endpoints_instructions.append(
                     (
@@ -3110,7 +3109,7 @@ class MonitoringDeployment:
                             if override_type
                             else model_runner.endpoint_type,
                             model_class=monitoring_data[endpoint_name].get(
-                                mlrun.common.schemas.MonitoringData.MODEL_CLASS
+                                schemas.MonitoringData.MODEL_CLASS
                             ),
                             function_name=function_name,
                             function_tag=function_tag,
@@ -3118,17 +3117,17 @@ class MonitoringDeployment:
                             sampling_percentage=sampling_percentage,
                             uid=uid,
                             label_names=monitoring_data[endpoint_name].get(
-                                mlrun.common.schemas.MonitoringData.OUTPUTS
+                                schemas.MonitoringData.OUTPUTS
                             ),
                             model_path=monitoring_data[endpoint_name].get(
-                                mlrun.common.schemas.MonitoringData.MODEL_PATH, ""
+                                schemas.MonitoringData.MODEL_PATH, ""
                             ),
                             feature_names=monitoring_data[endpoint_name].get(
-                                mlrun.common.schemas.MonitoringData.INPUTS, []
+                                schemas.MonitoringData.INPUTS, []
                             ),
                         ),
                         monitoring_data[endpoint_name].get(
-                            mlrun.common.schemas.MonitoringData.CREATION_STRATEGY
+                            schemas.MonitoringData.CREATION_STRATEGY
                         ),
                     )
                 )
@@ -3216,7 +3215,7 @@ def get_endpoint_features(
     feature_names: list[str],
     feature_stats: dict | None = None,
     current_stats: dict | None = None,
-) -> list[mlrun.common.schemas.Features]:
+) -> list[schemas.Features]:
     """
     Getting a new list of features that exist in feature_names along with their expected (feature_stats) and
     actual (current_stats) stats. The expected stats were calculated during the creation of the model endpoint,
@@ -3230,7 +3229,7 @@ def get_endpoint_features(
                          batch job.
 
     return: List of feature objects. Each feature has a name, weight, expected values, and actual values. More info
-            can be found under `mlrun.common.schemas.Features`.
+            can be found under `schemas.Features`.
     """
 
     # Initialize feature and current stats dictionaries
@@ -3240,7 +3239,7 @@ def get_endpoint_features(
     # Create feature object and add it to a general features list
     features = []
     for name in feature_names:
-        f = mlrun.common.schemas.Features.new(
+        f = schemas.Features.new(
             name, safe_feature_stats.get(name), safe_current_stats.get(name)
         )
         features.append(f)

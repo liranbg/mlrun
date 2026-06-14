@@ -15,9 +15,10 @@
 import google.protobuf.reflection
 import grpc
 
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
+
+import schemas
 
 
 class BaseGRPCClient:

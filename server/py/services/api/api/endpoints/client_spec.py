@@ -15,9 +15,8 @@
 
 from fastapi import APIRouter, Depends, Header
 
-import mlrun.common.schemas
-
 import framework.utils.helpers
+import schemas
 import services.api.crud
 
 router = APIRouter()
@@ -26,12 +25,12 @@ router = APIRouter()
 @framework.utils.helpers.lru_cache_with_ttl(maxsize=32, ttl_seconds=60 * 5)
 def get_cached_client_spec(
     client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
     client_python_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.python_version
+        None, alias=schemas.HeaderNames.python_version
     ),
-) -> mlrun.common.schemas.ClientSpec:
+) -> schemas.ClientSpec:
     return services.api.crud.ClientSpec().get_client_spec(
         client_version,
         client_python_version,
@@ -40,9 +39,9 @@ def get_cached_client_spec(
 
 @router.get(
     "/client-spec",
-    response_model=mlrun.common.schemas.ClientSpec,
+    response_model=schemas.ClientSpec,
 )
 def get_client_spec(
-    client_spec: mlrun.common.schemas.ClientSpec = Depends(get_cached_client_spec),
+    client_spec: schemas.ClientSpec = Depends(get_cached_client_spec),
 ):
     return client_spec

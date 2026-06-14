@@ -19,11 +19,11 @@ import fastapi
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
 import mlrun.errors
 
 import framework.api.deps
 import framework.utils.auth.verifier
+import schemas
 import services.api.crud
 
 router = fastapi.APIRouter(prefix="/user-secrets")
@@ -32,12 +32,12 @@ router = fastapi.APIRouter(prefix="/user-secrets")
 @router.put(
     "/tokens",
     status_code=HTTPStatus.OK.value,
-    response_model=mlrun.common.schemas.StoreSecretTokensResponse,
+    response_model=schemas.StoreSecretTokensResponse,
 )
 async def store_secret_tokens(
-    secret_tokens: list[mlrun.common.schemas.SecretToken],
+    secret_tokens: list[schemas.SecretToken],
     force: bool = False,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -50,13 +50,13 @@ async def store_secret_tokens(
     )
 
 
-@router.get("/tokens", response_model=mlrun.common.schemas.ListSecretTokensResponse)
+@router.get("/tokens", response_model=schemas.ListSecretTokensResponse)
 async def list_secret_tokens(
     username: str | None = fastapi.Query(
         default=None,
         description="Username to filter tokens. Use '*' to list all users' tokens (system-admin only).",
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -85,7 +85,7 @@ async def list_secret_tokens(
 @router.delete(
     "/tokens",
     status_code=HTTPStatus.OK.value,
-    response_model=mlrun.common.schemas.DeleteSecretTokensResponse,
+    response_model=schemas.DeleteSecretTokensResponse,
 )
 async def delete_secret_tokens(
     username: str | None = fastapi.Query(
@@ -93,7 +93,7 @@ async def delete_secret_tokens(
         description="Username of the token owner. If None, deletes the caller's own tokens. "
         "System admins can delete tokens for other users.",
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -123,7 +123,7 @@ async def delete_secret_tokens(
 @router.delete(
     "/tokens/{name}",
     status_code=HTTPStatus.OK.value,
-    response_model=mlrun.common.schemas.DeleteSecretTokenResponse,
+    response_model=schemas.DeleteSecretTokenResponse,
 )
 async def delete_secret_token(
     name: str,
@@ -132,7 +132,7 @@ async def delete_secret_token(
         description="Username of the token owner. If None, deletes the caller's own token. "
         "System admins can delete tokens for other users.",
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -163,7 +163,7 @@ async def delete_secret_token(
 
 
 async def _resolve_target_username_for_list_secret_tokens(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     username: str | None,
 ) -> str:
     """
@@ -183,11 +183,11 @@ async def _resolve_target_username_for_list_secret_tokens(
         return auth_info.username
 
     has_system_admin_permissions = await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-        resource_type=mlrun.common.schemas.AuthorizationResourceTypes.tokens,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        resource_type=schemas.AuthorizationResourceTypes.tokens,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
         raise_on_forbidden=False,
-        resource_namespace=mlrun.common.schemas.AuthorizationResourceNamespace.mgmt,
+        resource_namespace=schemas.AuthorizationResourceNamespace.mgmt,
     )
 
     # "*" wildcard -> system-admin only, returns all users
@@ -213,7 +213,7 @@ async def _resolve_target_username_for_list_secret_tokens(
 
 
 async def _resolve_target_username_for_delete_secret_tokens(
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     username: str | None,
 ) -> str:
     """
@@ -232,11 +232,11 @@ async def _resolve_target_username_for_delete_secret_tokens(
         return auth_info.username
 
     has_system_admin_permissions = await framework.utils.auth.verifier.AuthVerifier().query_global_resource_permissions(
-        resource_type=mlrun.common.schemas.AuthorizationResourceTypes.tokens,
-        action=mlrun.common.schemas.AuthorizationAction.delete,
+        resource_type=schemas.AuthorizationResourceTypes.tokens,
+        action=schemas.AuthorizationAction.delete,
         auth_info=auth_info,
         raise_on_forbidden=False,
-        resource_namespace=mlrun.common.schemas.AuthorizationResourceNamespace.mgmt,
+        resource_namespace=schemas.AuthorizationResourceNamespace.mgmt,
     )
 
     # Specific username provided

@@ -14,9 +14,8 @@
 import sqlalchemy as sa
 from alembic import op
 
-import mlrun.common.schemas.partition_interval
-
 import framework.db.sqldb.sql_types
+import schemas.partition_interval
 
 """
 Migration: add partition_key column to alert_activations, populate it, and update
@@ -30,7 +29,7 @@ down_revision = "6d1d53f60e90"
 
 def _update_partition_keys_bulk(
     connection: sa.engine.Connection,
-    partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+    partition_interval: schemas.partition_interval.PartitionInterval,
 ) -> None:
     partition_expression = partition_interval.get_mysql_partition_key_sql(
         column_name="activation_time",
@@ -72,7 +71,7 @@ def upgrade() -> None:
     # environment. From this point onward, the partition interval configuration
     # is persisted in the `table_partition_interval` table and all runtime and
     # migration logic must read it from there instead of the environment.
-    partition_interval = mlrun.common.schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
+    partition_interval = schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
 
     # Save configured interval for this table
     table_partition_interval = sa.table(

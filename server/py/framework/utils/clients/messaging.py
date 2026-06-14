@@ -24,13 +24,13 @@ import aiohttp
 import fastapi
 import requests
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 import mlrun.utils.thread
 from mlrun.utils import logger
 
 import framework.utils.clients.discovery
+import schemas
 
 PREFIX_GROUPING = re.compile(r"^([a-z/-]+)/((?:v\d+)?).*")
 
@@ -476,7 +476,7 @@ class Client(metaclass=mlrun.utils.singleton.AbstractSingleton):
         if origin_host:
             # original host requested by client
             request_kwargs["headers"][
-                mlrun.common.schemas.HeaderNames.forwarded_host
+                schemas.HeaderNames.forwarded_host
             ] = origin_host
 
         # let the http client calculate it itself

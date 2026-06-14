@@ -20,8 +20,9 @@ import sqlalchemy.sql.compiler
 
 import mlrun
 import mlrun.common.db.dialects
-import mlrun.common.schemas.partition_interval
 import mlrun.utils
+
+import schemas.partition_interval
 
 
 class PartitionBootstrapper:
@@ -42,7 +43,7 @@ class PartitionBootstrapper:
         self,
         session: sqlalchemy.orm.Session,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ):
         """
@@ -68,7 +69,7 @@ class PartitionBootstrapper:
 
     def _get_partition_names_and_boundaries(
         self,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ) -> list[tuple[str, int]]:
         """
@@ -99,7 +100,7 @@ class PartitionBootstrapper:
         self,
         *,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ) -> list[tuple[str, int]]:
         """
@@ -122,7 +123,7 @@ class PartitionBootstrapperMySQL(PartitionBootstrapper):
         self,
         session: sqlalchemy.orm.Session,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ):
         """
@@ -327,7 +328,7 @@ class PartitionBootstrapperPostgres(PartitionBootstrapper):
         self,
         session: sqlalchemy.orm.Session,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ):
         """
@@ -392,7 +393,7 @@ class PartitionBootstrapperSqlite(PartitionBootstrapper):
         self,
         session: sqlalchemy.orm.Session,
         table_name: str,
-        partition_interval: mlrun.common.schemas.partition_interval.PartitionInterval,
+        partition_interval: schemas.partition_interval.PartitionInterval,
         partitions_count: int,
     ):
         """

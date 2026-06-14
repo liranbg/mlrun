@@ -20,7 +20,8 @@ Not exposed in mlrun.common so the client/SDK does not depend on them.
 import typing
 
 import mlrun.common.formatters
-import mlrun.common.schemas
+
+import schemas
 
 
 class ProjectFormatCustom:
@@ -74,16 +75,16 @@ class ProjectFormatCustomSelection:
     def __contains__(self, column: str) -> bool:
         return column in self.columns
 
-    def build(self, project_dict: dict) -> mlrun.common.schemas.Project:
-        return mlrun.common.schemas.Project(
-            metadata=mlrun.common.schemas.ProjectMetadata(
+    def build(self, project_dict: dict) -> schemas.Project:
+        return schemas.Project(
+            metadata=schemas.ProjectMetadata(
                 name=project_dict.get("name"),
                 created=project_dict.get("created"),
             ),
-            spec=mlrun.common.schemas.ProjectSpec(
+            spec=schemas.ProjectSpec(
                 owner=project_dict.get("owner"),
             ),
-            status=mlrun.common.schemas.ProjectStatus(
+            status=schemas.ProjectStatus(
                 state=project_dict.get("state"),
                 op_id=project_dict.get("op_id"),
                 phase=project_dict.get("phase"),

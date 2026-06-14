@@ -20,7 +20,6 @@ from fastapi import Depends
 from fastapi.concurrency import run_in_threadpool
 from kfp_server_api import ApiException
 
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.api.deps
@@ -29,6 +28,7 @@ import framework.utils.clients.chief
 import framework.utils.clients.iguazio.v3 as iguazio_client
 import framework.utils.notifications.notification_pusher as notification_pusher
 import framework.utils.singletons
+import schemas
 import services.api.initial_data
 
 router = fastapi.APIRouter(prefix="/operations")
@@ -41,7 +41,7 @@ current_migration_background_task_name = None
     "/migrations",
     responses={
         http.HTTPStatus.OK.value: {},
-        http.HTTPStatus.ACCEPTED.value: {"model": mlrun.common.schemas.BackgroundTask},
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTask},
     },
 )
 async def trigger_migrations(
@@ -52,7 +52,7 @@ async def trigger_migrations(
     # only chief can execute migrations, redirecting request to chief
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info("Requesting to trigger migrations, re-routing to chief")
         chief_client = framework.utils.clients.chief.Client()
@@ -86,14 +86,14 @@ async def trigger_migrations(
     "/refresh-smtp-configuration",
     responses={
         http.HTTPStatus.OK.value: {},
-        http.HTTPStatus.ACCEPTED.value: {"model": mlrun.common.schemas.BackgroundTask},
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTask},
     },
 )
 async def refresh_smtp_configuration(
     background_tasks: fastapi.BackgroundTasks,
     response: fastapi.Response,
     request: fastapi.Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -101,7 +101,7 @@ async def refresh_smtp_configuration(
     # race conditions
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info("Requesting to refresh SMTP configuration, re-routing to chief")
         chief_client = framework.utils.clients.chief.Client()
@@ -130,24 +130,24 @@ def _get_or_create_migration_background_task(
     task_name: str,
 ) -> tuple[
     typing.Callable | None,
-    mlrun.common.schemas.BackgroundTask | None,
+    schemas.BackgroundTask | None,
     str,
 ]:
     if (
         mlrun.mlconf.httpdb.state
-        == mlrun.common.schemas.APIStates.migrations_in_progress
+        == schemas.APIStates.migrations_in_progress
     ):
         background_task = framework.utils.background_tasks.InternalBackgroundTasksHandler().get_background_task(
             task_name
         )
         return None, background_task, task_name
-    elif mlrun.mlconf.httpdb.state == mlrun.common.schemas.APIStates.migrations_failed:
+    elif mlrun.mlconf.httpdb.state == schemas.APIStates.migrations_failed:
         raise mlrun.errors.MLRunPreconditionFailedError(
             "Migrations were already triggered and failed. Restart the API to retry"
         )
     elif (
         mlrun.mlconf.httpdb.state
-        != mlrun.common.schemas.APIStates.waiting_for_migrations
+        != schemas.APIStates.waiting_for_migrations
     ):
         return None, None, ""
 
@@ -171,7 +171,7 @@ async def _perform_migration():
         services.api.initial_data.init_data, perform_migrations_if_needed=True
     )
     await daemon.service.move_service_to_online()
-    mlrun.mlconf.httpdb.state = mlrun.common.schemas.APIStates.online
+    mlrun.mlconf.httpdb.state = schemas.APIStates.online
 
 
 def _create_refresh_smtp_configuration_background_task(

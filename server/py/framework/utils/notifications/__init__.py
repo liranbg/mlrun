@@ -18,7 +18,6 @@ from hashlib import sha224
 
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
 import mlrun.errors
 from mlrun.errors import err_to_str
 from mlrun.utils import get_in, logger
@@ -27,6 +26,7 @@ import framework.constants
 import framework.db.base
 import framework.utils.notifications.notification_pusher as notification_pusher
 import framework.utils.singletons.k8s
+import schemas
 import services.api.crud
 
 
@@ -47,7 +47,7 @@ def delete_notification_params_secret(
     if services.api.crud.Secrets().is_internal_project_secret_key(params_secret):
         services.api.crud.Secrets().delete_project_secret(
             project,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretProviderName.kubernetes,
             secret_key=params_secret,
             allow_internal_secrets=True,
             allow_secrets_from_k8s=True,
@@ -123,7 +123,7 @@ def unmask_notification_params_secret_on_task(
                 exc=err_to_str(exc),
             )
             # set error status in order to later save the db
-            notification.status = mlrun.common.schemas.NotificationStatus.ERROR
+            notification.status = schemas.NotificationStatus.ERROR
             invalid_notifications.append(notification)
 
         if invalid_notifications:
@@ -155,7 +155,7 @@ def unmask_notification_params_secret(
 
     secret = services.api.crud.Secrets().get_project_secret(
         project,
-        mlrun.common.schemas.SecretProviderName.kubernetes,
+        schemas.SecretProviderName.kubernetes,
         secret_key=params_secret,
         allow_internal_secrets=True,
         allow_secrets_from_k8s=True,
@@ -172,7 +172,7 @@ def unmask_notification_params_secret(
 
 def validate_and_mask_notification_list(
     notifications: list[
-        typing.Union[mlrun.model.Notification, mlrun.common.schemas.Notification, dict]
+        typing.Union[mlrun.model.Notification, schemas.Notification, dict]
     ],
     parent: str,
     project: str,
@@ -191,7 +191,7 @@ def validate_and_mask_notification_list(
     for notification in notifications:
         if isinstance(notification, dict):
             notification_object = mlrun.model.Notification.from_dict(notification)
-        elif isinstance(notification, mlrun.common.schemas.Notification):
+        elif isinstance(notification, schemas.Notification):
             notification_object = mlrun.model.Notification.from_dict(
                 notification.dict()
             )
@@ -203,7 +203,7 @@ def validate_and_mask_notification_list(
             )
 
         # validate notification schema
-        mlrun.common.schemas.Notification(**notification_object.to_dict())
+        schemas.Notification(**notification_object.to_dict())
 
         default_notification_params = notification_pusher.RunNotificationPusher.resolve_notifications_default_params()
         notification_object.validate_notification_params(default_notification_params)
@@ -262,8 +262,8 @@ def _conceal_notification_params_with_secret(
         )
         services.api.crud.Secrets().store_project_secrets(
             project,
-            mlrun.common.schemas.SecretsData(
-                provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretsData(
+                provider=schemas.SecretProviderName.kubernetes,
                 secrets={secret_key: json.dumps(notification_object.secret_params)},
             ),
             allow_internal_secrets=True,

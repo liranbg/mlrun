@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import mlrun
-import mlrun.common.schemas
 import mlrun.utils.singleton
+
+import schemas
 
 
 class ClusterizationSpec(
@@ -23,7 +24,7 @@ class ClusterizationSpec(
     @staticmethod
     def get_clusterization_spec():
         is_chief = mlrun.mlconf.httpdb.clusterization.role == "chief"
-        return mlrun.common.schemas.ClusterizationSpec(
+        return schemas.ClusterizationSpec(
             chief_api_state=mlrun.mlconf.httpdb.state if is_chief else None,
             chief_version=mlrun.mlconf.version if is_chief else None,
         )

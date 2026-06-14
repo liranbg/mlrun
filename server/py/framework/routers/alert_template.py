@@ -18,27 +18,26 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
-
 import framework.service
 import framework.utils.singletons.project_member
+import schemas
 from framework.api import deps
 
 router = APIRouter(prefix="/alert-templates")
 
 
-@router.put("/{name}", response_model=mlrun.common.schemas.AlertTemplate)
+@router.put("/{name}", response_model=schemas.AlertTemplate)
 @inject
 async def store_alert_template(
     request: Request,
     name: str,
-    alert_data: mlrun.common.schemas.AlertTemplate,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    alert_data: schemas.AlertTemplate,
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertTemplate:
+) -> schemas.AlertTemplate:
     return await service.handle_request(
         "store_alert_template",
         request,
@@ -51,18 +50,18 @@ async def store_alert_template(
 
 @router.get(
     "/{name}",
-    response_model=mlrun.common.schemas.AlertTemplate,
+    response_model=schemas.AlertTemplate,
 )
 @inject
 async def get_alert_template(
     request: Request,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertTemplate:
+) -> schemas.AlertTemplate:
     return await service.handle_request(
         "get_alert_template",
         request,
@@ -72,16 +71,16 @@ async def get_alert_template(
     )
 
 
-@router.get("", response_model=list[mlrun.common.schemas.AlertTemplate])
+@router.get("", response_model=list[schemas.AlertTemplate])
 @inject
 async def list_alert_templates(
     request: Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> list[mlrun.common.schemas.AlertTemplate]:
+) -> list[schemas.AlertTemplate]:
     return await service.handle_request(
         "list_alert_templates",
         request,
@@ -98,7 +97,7 @@ async def list_alert_templates(
 async def delete_alert_template(
     request: Request,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]

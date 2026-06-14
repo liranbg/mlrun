@@ -24,7 +24,6 @@ from functools import partial
 import fastapi
 
 import mlrun
-import mlrun.common.schemas as schemas
 import mlrun.utils.helpers
 import mlrun.utils.singleton
 from mlrun.auth.utils import resolve_jwt_expiration
@@ -35,6 +34,7 @@ import framework.utils.auth.providers.nop
 import framework.utils.auth.providers.opa
 import framework.utils.clients.iguazio.v3
 import framework.utils.clients.iguazio.v4
+import schemas as schemas
 
 
 class AuthVerifier(metaclass=mlrun.utils.singleton.Singleton):
@@ -316,7 +316,7 @@ class AuthVerifier(metaclass=mlrun.utils.singleton.Singleton):
     async def ensure_project_permissions(
         self,
         project_name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
     ):
         """
         Ensures project permissions are populated in the AuthVerifier
@@ -325,7 +325,7 @@ class AuthVerifier(metaclass=mlrun.utils.singleton.Singleton):
         async def _check_project_read_permissions():
             await self.query_project_permissions(
                 project_name,
-                mlrun.common.schemas.AuthorizationAction.read,
+                schemas.AuthorizationAction.read,
                 auth_info,
             )
 

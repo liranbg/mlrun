@@ -18,9 +18,8 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
-
 import framework.service
+import schemas
 from framework.api import deps
 
 router = APIRouter()
@@ -36,24 +35,24 @@ async def list_alert_activations(
     since: str | None = None,
     until: str | None = None,
     entity: str | None = None,
-    severity: list[Union[mlrun.common.schemas.alert.AlertSeverity, str]] | None = Query(
+    severity: list[Union[schemas.alert.AlertSeverity, str]] | None = Query(
         [], alias="severity"
     ),
-    entity_kind: Union[mlrun.common.schemas.alert.EventEntityKind, str] | None = Query(
+    entity_kind: Union[schemas.alert.EventEntityKind, str] | None = Query(
         None, alias="entity-kind"
     ),
-    event_kind: Union[mlrun.common.schemas.alert.EventKind, str] | None = Query(
+    event_kind: Union[schemas.alert.EventKind, str] | None = Query(
         None, alias="event-kind"
     ),
     page: int = Query(None, gt=0),
     page_size: int = Query(None, alias="page-size", gt=0),
     page_token: str = Query(None, alias="page-token"),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertActivations:
+) -> schemas.AlertActivations:
     return await service.handle_request(
         "list_alert_activations",
         request=request,
@@ -75,11 +74,11 @@ async def list_alert_activations(
 
 @router.get(
     "/projects/{project}/alerts/{name}/activations/{activation_id}",
-    response_model=mlrun.common.schemas.AlertActivation,
+    response_model=schemas.AlertActivation,
 )
 @router.get(
     "/projects/{project}/alert-activations/{activation_id}",
-    response_model=mlrun.common.schemas.AlertActivation,
+    response_model=schemas.AlertActivation,
 )
 @inject
 async def get_alert_activation(
@@ -87,12 +86,12 @@ async def get_alert_activation(
     project: str,
     activation_id: int,
     name: str | None = None,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]
     ),
-) -> mlrun.common.schemas.AlertActivation:
+) -> schemas.AlertActivation:
     return await service.handle_request(
         "get_alert_activation",
         request=request,

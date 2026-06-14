@@ -27,8 +27,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mysql
 
-import mlrun.common.schemas.alert
-import mlrun.common.schemas.partition_interval
+import schemas.alert
+import schemas.partition_interval
 
 # revision identifiers, used by Alembic.
 revision = "650f0ce2da6f"
@@ -83,7 +83,7 @@ def upgrade():
     )
     # ### end Alembic commands ###
 
-    partition_interval = mlrun.common.schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
+    partition_interval = schemas.partition_interval.PartitionInterval.get_partition_interval_from_env()
     # Calculate the date of next partitioning interval
     now_utc = datetime.utcnow()
 

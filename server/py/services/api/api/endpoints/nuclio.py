@@ -23,10 +23,7 @@ import sqlalchemy.orm
 from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.constants as mm_constants
 from mlrun.common.runtimes.validators import validate_sidecar_probes
-from mlrun.common.schemas.serving import DeployResponse
 from mlrun.config import config
 from mlrun.utils import logger
 from mlrun.utils.helpers import generate_object_uri
@@ -37,11 +34,14 @@ import framework.utils.auth.verifier
 import framework.utils.clients.async_nuclio
 import framework.utils.clients.chief
 import framework.utils.singletons.project_member
+import schemas
+import schemas.model_monitoring.constants as mm_constants
 import services.api.crud.model_monitoring.deployment as mm_deployment
 import services.api.crud.runtimes.nuclio.function
 import services.api.launcher
 from framework.api import deps
 from framework.constants import MINIMUM_CLIENT_VERSION_FOR_MM
+from schemas.serving import DeployResponse
 from services.api.crud.secrets import Secrets, SecretsClientType
 from services.api.utils.endpoints import start_model_endpoint_creation_background_task
 
@@ -50,24 +50,24 @@ router = APIRouter()
 
 @router.get(
     "/projects/{project}/api-gateways",
-    response_model=mlrun.common.schemas.APIGatewaysOutput,
+    response_model=schemas.APIGatewaysOutput,
     response_model_exclude_none=True,
 )
 async def list_api_gateways(
     project: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     auth_verifier = framework.utils.auth.verifier.AuthVerifier()
     await auth_verifier.query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     async with framework.utils.clients.async_nuclio.Client(auth_info) as client:
         api_gateways = await client.list_api_gateways(project)
 
     allowed_api_gateways = await auth_verifier.filter_project_resources_by_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.api_gateway,
+        schemas.AuthorizationResourceTypes.api_gateway,
         list(api_gateways.keys()) if api_gateways else [],
         lambda _api_gateway: (
             project,
@@ -78,30 +78,30 @@ async def list_api_gateways(
     allowed_api_gateways = {
         api_gateway: api_gateways[api_gateway] for api_gateway in allowed_api_gateways
     }
-    return mlrun.common.schemas.APIGatewaysOutput(api_gateways=allowed_api_gateways)
+    return schemas.APIGatewaysOutput(api_gateways=allowed_api_gateways)
 
 
 @router.get(
     "/projects/{project}/api-gateways/{gateway}",
-    response_model=mlrun.common.schemas.APIGateway,
+    response_model=schemas.APIGateway,
     response_model_exclude_none=True,
 )
 async def get_api_gateway(
     project: str,
     gateway: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.api_gateway,
+            schemas.AuthorizationResourceTypes.api_gateway,
             project,
             gateway,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -113,26 +113,26 @@ async def get_api_gateway(
 
 @router.put(
     "/projects/{project}/api-gateways/{name}",
-    response_model=mlrun.common.schemas.APIGateway,
+    response_model=schemas.APIGateway,
     response_model_exclude_none=True,
 )
 async def store_api_gateway(
     project: str,
     name: str,
-    api_gateway: mlrun.common.schemas.APIGateway,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    api_gateway: schemas.APIGateway,
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.api_gateway,
+            schemas.AuthorizationResourceTypes.api_gateway,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -190,19 +190,19 @@ async def store_api_gateway(
 async def delete_api_gateway(
     project: str,
     name: str,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.api_gateway,
+            schemas.AuthorizationResourceTypes.api_gateway,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -229,13 +229,13 @@ async def deploy_function(
     name: str,
     request: Request,
     background_tasks: fastapi.BackgroundTasks,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: sqlalchemy.orm.Session = Depends(deps.get_db_session),
     client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
+        None, alias=schemas.HeaderNames.client_version
     ),
     client_python_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.python_version
+        None, alias=schemas.HeaderNames.python_version
     ),
 ):
     data = None
@@ -259,10 +259,10 @@ async def deploy_function(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.function,
+            schemas.AuthorizationResourceTypes.function,
             project,
             name,
-            mlrun.common.schemas.AuthorizationAction.update,
+            schemas.AuthorizationAction.update,
             auth_info,
         )
     )
@@ -305,18 +305,18 @@ async def deploy_status(
     tag: str = "",
     last_log_timestamp: float = 0.0,
     verbose: bool = False,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: sqlalchemy.orm.Session = Depends(deps.get_db_session),
 ):
     if not project:
         raise mlrun.errors.MLRunMissingProjectError()
     await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.function,
+        schemas.AuthorizationResourceTypes.function,
         project,
         name,
         # store since with the current mechanism we update the status (and store the function) in the DB when a client
         # query for the status
-        mlrun.common.schemas.AuthorizationAction.store,
+        schemas.AuthorizationAction.store,
         auth_info,
     )
     fn = await run_in_threadpool(
@@ -361,7 +361,7 @@ def process_model_monitoring_secret(
         project_name=project_name,
         namespace=mlrun.mlconf.namespace,
     )
-    provider = mlrun.common.schemas.SecretProviderName.kubernetes
+    provider = schemas.SecretProviderName.kubernetes
     secret_value = Secrets().get_project_secret(
         project_name,
         provider,
@@ -405,7 +405,7 @@ def process_model_monitoring_secret(
                 project_owner=project_owner.username,
             )
     if store:
-        secrets = mlrun.common.schemas.SecretsData(
+        secrets = schemas.SecretsData(
             provider=provider, secrets={internal_key_name: secret_value}
         )
         Secrets().store_project_secrets(
@@ -422,7 +422,7 @@ def process_model_monitoring_secret(
 
 def _deploy_function(
     db_session: sqlalchemy.orm.Session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     project: str,
     name: str,
     function: dict,
@@ -541,7 +541,7 @@ def _deploy_nuclio_runtime(
             model_monitoring_access_key = process_model_monitoring_secret(
                 db_session,
                 fn.metadata.project,
-                mlrun.common.schemas.model_monitoring.ProjectSecretKeys.ACCESS_KEY,
+                schemas.model_monitoring.ProjectSecretKeys.ACCESS_KEY,
             )
         else:
             model_monitoring_access_key = None

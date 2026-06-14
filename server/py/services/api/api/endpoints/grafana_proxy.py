@@ -19,9 +19,10 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.grafana as grafana_schemas
+import mlrun
 
+import schemas
+import schemas.model_monitoring.grafana as grafana_schemas
 import services.api.crud.model_monitoring.grafana
 import services.api.crud.model_monitoring.helpers
 from framework.api import deps
@@ -43,7 +44,7 @@ SUPPORTED_SEARCH_FUNCTIONS = set(NAME_TO_SEARCH_FUNCTION_DICTIONARY)
 
 @router.get("", status_code=HTTPStatus.OK.value)
 def grafana_proxy_model_endpoints_check_connection(
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
 ):
     """
     Root of grafana proxy for the model-endpoints API, used for validating the model-endpoints data source
@@ -57,7 +58,7 @@ def grafana_proxy_model_endpoints_check_connection(
 @router.post("/search", response_model=list[str])
 async def grafana_proxy_model_endpoints_search(
     request: Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ) -> list[str]:
     """
@@ -101,7 +102,7 @@ async def grafana_proxy_model_endpoints_search(
 )
 async def grafana_proxy_model_endpoints_query(
     request: Request,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ) -> list[grafana_schemas.GrafanaTable,]:
     """

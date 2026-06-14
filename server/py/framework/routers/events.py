@@ -16,9 +16,8 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
-
 import framework.service
+import schemas
 from framework.api import deps
 
 router = APIRouter()
@@ -30,8 +29,8 @@ async def process_event(
     request: Request,
     project: str,
     name: str,
-    event_data: mlrun.common.schemas.Event,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(deps.authenticate_request),
+    event_data: schemas.Event,
+    auth_info: schemas.AuthInfo = Depends(deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
     service: framework.service.Service = Depends(
         Provide[framework.service.ServiceContainer.service]

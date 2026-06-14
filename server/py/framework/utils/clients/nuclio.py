@@ -24,13 +24,13 @@ import sqlalchemy.orm
 
 import mlrun.auth.nuclio
 import mlrun.common.formatters
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 from mlrun.utils import logger
 
 import framework.utils.clients.helpers
 import framework.utils.projects.remotes.follower as project_follower
+import schemas
 
 
 class Client(
@@ -45,8 +45,8 @@ class Client(
     def create_project(
         self,
         session: sqlalchemy.orm.Session,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug("Creating project in Nuclio", project=project)
         body = self._generate_request_body(project)
@@ -56,8 +56,8 @@ class Client(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug("Storing project in Nuclio", name=name, project=project)
         body = self._generate_request_body(project)
@@ -75,8 +75,8 @@ class Client(
         session: sqlalchemy.orm.Session,
         name: str,
         project: dict,
-        patch_mode: mlrun.common.schemas.PatchMode = mlrun.common.schemas.PatchMode.replace,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        patch_mode: schemas.PatchMode = schemas.PatchMode.replace,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug(
             "Patching project in Nuclio",
@@ -104,15 +104,15 @@ class Client(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         logger.debug(
             "Deleting project in Nuclio", name=name, deletion_strategy=deletion_strategy
         )
         body = self._generate_request_body(
-            mlrun.common.schemas.Project(
-                metadata=mlrun.common.schemas.ProjectMetadata(name=name)
+            schemas.Project(
+                metadata=schemas.ProjectMetadata(name=name)
             )
         )
         headers = {
@@ -139,8 +139,8 @@ class Client(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         response = self._get_project_from_nuclio(name, auth_info)
         response_body = response.json()
         return self._transform_nuclio_project_to_schema(response_body)
@@ -148,14 +148,14 @@ class Client(
     def list_projects(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         format_: mlrun.common.formatters.ProjectFormat = mlrun.common.formatters.ProjectFormat.full,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
         updated_after: datetime.datetime | None = None,
-    ) -> mlrun.common.schemas.ProjectsOutput:
+    ) -> schemas.ProjectsOutput:
         if owner:
             raise NotImplementedError(
                 "Listing nuclio projects by owner is currently not supported"
@@ -178,7 +178,7 @@ class Client(
             )
         response = self._send_request_to_api("GET", "projects", auth_info=auth_info)
         response_body = response.json()
-        return mlrun.common.schemas.ProjectsOutput(
+        return schemas.ProjectsOutput(
             projects=[
                 mlrun.common.formatters.ProjectFormat.format_obj(
                     self._transform_nuclio_project_to_schema(nuclio_project),
@@ -195,20 +195,20 @@ class Client(
     def list_project_summaries(
         self,
         session: sqlalchemy.orm.Session,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         owner: str | None = None,
         labels: list[str] | None = None,
-        state: mlrun.common.schemas.ProjectState = None,
+        state: schemas.ProjectState = None,
         names: list[str] | None = None,
-    ) -> mlrun.common.schemas.ProjectSummariesOutput:
+    ) -> schemas.ProjectSummariesOutput:
         raise NotImplementedError("Listing project summaries is not supported")
 
     def get_project_summary(
         self,
         session: sqlalchemy.orm.Session,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectSummary:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectSummary:
         raise NotImplementedError("Get project summary is not supported")
 
     def get_dashboard_version(self) -> str:
@@ -218,7 +218,7 @@ class Client(
 
     def prepare_create_project(
         self,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError
@@ -247,25 +247,25 @@ class Client(
     def update_project_follower(
         self,
         name: str,
-        project: mlrun.common.schemas.Project,
+        project: schemas.Project,
         op_id: uuid.UUID,
     ) -> None:
         raise NotImplementedError
 
     def _get_project_from_nuclio(
-        self, name, auth_info: mlrun.common.schemas.AuthInfo = None
+        self, name, auth_info: schemas.AuthInfo = None
     ):
         return self._send_request_to_api("GET", f"projects/{name}", auth_info=auth_info)
 
     def _post_project_to_nuclio(
-        self, body: dict, auth_info: mlrun.common.schemas.AuthInfo = None
+        self, body: dict, auth_info: schemas.AuthInfo = None
     ):
         return self._send_request_to_api(
             "POST", "projects", auth_info=auth_info, json=body
         )
 
     def _put_project_to_nuclio(
-        self, name: str, body, auth_info: mlrun.common.schemas.AuthInfo = None
+        self, name: str, body, auth_info: schemas.AuthInfo = None
     ):
         self._send_request_to_api(
             "PUT", f"projects/{name}", auth_info=auth_info, json=body
@@ -275,7 +275,7 @@ class Client(
         self,
         method,
         path,
-        auth_info: mlrun.common.schemas.AuthInfo = None,
+        auth_info: schemas.AuthInfo = None,
         **kwargs,
     ):
         url = f"{self._api_url}/api/{path}"
@@ -327,7 +327,7 @@ class Client(
         return response
 
     @staticmethod
-    def _generate_request_body(project: mlrun.common.schemas.Project):
+    def _generate_request_body(project: schemas.Project):
         body = {
             "metadata": {"name": project.metadata.name},
         }
@@ -341,13 +341,13 @@ class Client(
 
     @staticmethod
     def _transform_nuclio_project_to_schema(nuclio_project):
-        return mlrun.common.schemas.Project(
-            metadata=mlrun.common.schemas.ProjectMetadata(
+        return schemas.Project(
+            metadata=schemas.ProjectMetadata(
                 name=nuclio_project["metadata"]["name"],
                 labels=nuclio_project["metadata"].get("labels"),
                 annotations=nuclio_project["metadata"].get("annotations"),
             ),
-            spec=mlrun.common.schemas.ProjectSpec(
+            spec=schemas.ProjectSpec(
                 description=nuclio_project["spec"].get("description")
             ),
         )

@@ -31,7 +31,6 @@ from kubernetes import client, config
 import mlrun
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.runtimes
-import mlrun.common.schemas
 import mlrun.common.secrets
 import mlrun.common.secrets as mlsecrets
 import mlrun.errors
@@ -47,6 +46,7 @@ from mlrun.utils.helpers import (
 )
 
 import framework.utils.runtimes.mpijob
+import schemas
 
 _k8s = None
 
@@ -656,7 +656,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         project,
         secrets,
         namespace="",
-    ) -> (str, mlrun.common.schemas.SecretEventActions | None):
+    ) -> (str, schemas.SecretEventActions | None):
         secret_name = self.get_project_secret_name(project)
         action = self.store_secrets_with_retry(secret_name, secrets, namespace)
         return secret_name, action
@@ -693,10 +693,10 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 return None
 
         username = _get_secret_value(
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key("username")
+            schemas.AuthSecretData.get_field_secret_key("username")
         )
         access_key = _get_secret_value(
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key("access_key")
+            schemas.AuthSecretData.get_field_secret_key("access_key")
         )
 
         return username, access_key
@@ -706,17 +706,17 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         username: str,
         access_key: str,
         namespace="",
-    ) -> (str, mlrun.common.schemas.SecretEventActions | None):
+    ) -> (str, schemas.SecretEventActions | None):
         """
         Store the given access key as a secret in the cluster. The secret name is generated from the access key
         :return: returns the secret name and the action taken against the secret
         """
         secret_name = self.resolve_auth_secret_name(access_key)
         secret_data = {
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key(
+            schemas.AuthSecretData.get_field_secret_key(
                 "username"
             ): username,
-            mlrun.common.schemas.AuthSecretData.get_field_secret_key(
+            schemas.AuthSecretData.get_field_secret_key(
                 "access_key"
             ): access_key,
         }
@@ -771,7 +771,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         namespace: str = "",
         type_: str = SecretTypes.opaque,
         labels: dict | None = None,
-    ) -> mlrun.common.schemas.SecretEventActions | None:
+    ) -> schemas.SecretEventActions | None:
         """
         Store secrets in a kubernetes secret object
         :param secret_name: the project secret name
@@ -801,7 +801,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 secrets=secrets,
                 type_=type_,
             )
-            return mlrun.common.schemas.SecretEventActions.created
+            return schemas.SecretEventActions.created
 
         # Secret exists and we are updating it.
         self._update_secret(
@@ -810,7 +810,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
             secret_name=secret_name,
             secrets=secrets,
         )
-        return mlrun.common.schemas.SecretEventActions.updated
+        return schemas.SecretEventActions.updated
 
     def read_secret(
         self,
@@ -1001,7 +1001,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
 
     def delete_project_secrets(
         self, project, secrets, namespace=""
-    ) -> (str, mlrun.common.schemas.SecretEventActions | None):
+    ) -> (str, schemas.SecretEventActions | None):
         """
         Delete secrets from a kubernetes secret object
         :return: returns the secret name and the action taken against the secret
@@ -1019,7 +1019,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         secret_name,
         secrets,
         namespace="",
-    ) -> mlrun.common.schemas.SecretEventActions | None:
+    ) -> schemas.SecretEventActions | None:
         """
         Delete secrets from a kubernetes secret object
         :param secret_name: the project secret name
@@ -1060,7 +1060,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 namespace,
                 _request_timeout=self._resolve_k8s_timeout(),
             )
-            return mlrun.common.schemas.SecretEventActions.deleted
+            return schemas.SecretEventActions.deleted
 
         # Create a copy of the k8s secret data, filtering out specified secrets if any
         if secrets:
@@ -1089,7 +1089,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 k8s_secret,
                 _request_timeout=self._resolve_k8s_timeout(),
             )
-            return mlrun.common.schemas.SecretEventActions.updated
+            return schemas.SecretEventActions.updated
 
         # No secrets left, so delete the secret
         self.v1api.delete_namespaced_secret(
@@ -1097,7 +1097,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
             namespace,
             _request_timeout=self._resolve_k8s_timeout(),
         )
-        return mlrun.common.schemas.SecretEventActions.deleted
+        return schemas.SecretEventActions.deleted
 
     @raise_for_status_code
     def ensure_configmap(
@@ -1427,14 +1427,14 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
 
     def store_user_token_secret(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         token_name: str,
         token: str,
         expiration: int,
         issued_at: int,
         force: bool = False,
         namespace: str | None = None,
-    ) -> mlrun.common.schemas.SecretEventActions | None:
+    ) -> schemas.SecretEventActions | None:
         """
         Creates or updates a Kubernetes secret for a user's offline token.
 
@@ -1510,7 +1510,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 ),
                 encoded=True,
             )
-            return mlrun.common.schemas.SecretEventActions.created
+            return schemas.SecretEventActions.created
 
         # Stale labels/annotations on the existing secret are a reason to
         # update on their own — the expiration guard only protects the data.
@@ -1540,7 +1540,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                 annotations=annotations,
                 encoded=True,
             )
-            return mlrun.common.schemas.SecretEventActions.updated
+            return schemas.SecretEventActions.updated
 
         return None
 
@@ -1597,7 +1597,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         self,
         username: str,
         namespace: str | None = None,
-    ) -> list[mlrun.common.schemas.SecretTokenInfo]:
+    ) -> list[schemas.SecretTokenInfo]:
         """
         List all offline token secrets for a given user.
 
@@ -1622,7 +1622,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
 
         k8s_secrets = self.list_secrets(namespace=namespace, labels=labels)
 
-        secret_tokens: list[mlrun.common.schemas.SecretTokenInfo] = []
+        secret_tokens: list[schemas.SecretTokenInfo] = []
 
         for k8s_secret in k8s_secrets:
             token_info = self._convert_secret_to_token_info(k8s_secret)
@@ -1683,7 +1683,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
     def _convert_secret_to_token_info(
         self,
         k8s_secret: client.V1Secret,
-    ) -> mlrun.common.schemas.SecretTokenInfo | None:
+    ) -> schemas.SecretTokenInfo | None:
         """
         Convert a Kubernetes secret to a SecretTokenInfo object if valid.
 
@@ -1715,7 +1715,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         ):
             return None
 
-        return mlrun.common.schemas.SecretTokenInfo(
+        return schemas.SecretTokenInfo(
             name=token_name,
             expiration=expiration,
             issued_at=issued_at,
@@ -1796,7 +1796,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         self,
         user_id: str,
         namespace: str | None = None,
-    ) -> list[mlrun.common.schemas.SecretToken]:
+    ) -> list[schemas.SecretToken]:
         """
         List all token values for a user in a single K8s API call.
 
@@ -1813,7 +1813,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
         labels = {mlrun_constants.MLRunInternalLabels.auth_userid: user_id}
         k8s_secrets = self.list_secrets(namespace=namespace, labels=labels)
 
-        secret_tokens: list[mlrun.common.schemas.SecretToken] = []
+        secret_tokens: list[schemas.SecretToken] = []
         for k8s_secret in k8s_secrets:
             try:
                 token_value = self._extract_token_from_secret(k8s_secret)
@@ -1822,7 +1822,7 @@ class K8sHelper(mlsecrets.SecretProviderInterface):
                     mlrun_constants.InternalAnnotations.auth_token_name
                 ]
                 secret_tokens.append(
-                    mlrun.common.schemas.SecretToken(name=token_name, token=token_value)
+                    schemas.SecretToken(name=token_name, token=token_value)
                 )
             except mlrun.errors.MLRunNotFoundError:
                 annotations = k8s_secret.metadata.annotations or {}

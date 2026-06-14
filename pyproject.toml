@@ -26,7 +26,7 @@ explicit-preview-rules = true
 
 [tool.ruff.lint.isort]
 known-first-party = ["mlrun", "mlrun_pipelines"]
-known-local-folder = ["services", "framework"]
+known-local-folder = ["services", "framework", "schemas"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120

@@ -23,14 +23,14 @@ from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
-import mlrun.common.schemas.model_monitoring.constants as mm_constants
-import mlrun.common.schemas.model_monitoring.model_endpoints as mm_endpoints
 import mlrun.model_monitoring.helpers
 from mlrun.utils import logger
 
 import framework.api.utils
 import framework.utils.auth.verifier
+import schemas
+import schemas.model_monitoring.constants as mm_constants
+import schemas.model_monitoring.model_endpoints as mm_endpoints
 import services.api.api.endpoints.model_endpoints
 import services.api.common.constants as api_constants
 import services.api.crud
@@ -50,7 +50,7 @@ class _CommonParams:
     """Common parameters for model monitoring endpoints"""
 
     project: str
-    auth_info: mlrun.common.schemas.AuthInfo
+    auth_info: schemas.AuthInfo
     db_session: Session
     model_monitoring_access_key: str | None = None
     auth_token_name: str | None = None
@@ -77,9 +77,9 @@ class _CommonParams:
 
 async def _verify_authorization(
     project: str,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     client_version: str,
-    action: str = mlrun.common.schemas.AuthorizationAction.store,
+    action: str = schemas.AuthorizationAction.store,
 ) -> None:
     """Verify project authorization"""
     if (
@@ -95,7 +95,7 @@ async def _verify_authorization(
         )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            resource_type=mlrun.common.schemas.AuthorizationResourceTypes.function,
+            resource_type=schemas.AuthorizationResourceTypes.function,
             project_name=project,
             resource_name=mm_constants.MonitoringFunctionNames.APPLICATION_CONTROLLER,
             action=action,
@@ -106,13 +106,9 @@ async def _verify_authorization(
 
 async def _common_parameters(
     project: ProjectAnnotation,
-    auth_info: Annotated[
-        mlrun.common.schemas.AuthInfo, Depends(deps.authenticate_request)
-    ],
+    auth_info: Annotated[schemas.AuthInfo, Depends(deps.authenticate_request)],
     db_session: Annotated[Session, Depends(deps.get_db_session)],
-    client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
-    ),
+    client_version: str | None = Header(None, alias=schemas.HeaderNames.client_version),
     auth_token_name: str | None = Query(
         None, description="Auth token name (set by mlrun.RuntimeConfigurationContext)"
     ),
@@ -262,9 +258,7 @@ def update_model_monitoring_controller(
 @router.delete(
     "/",
     responses={
-        http.HTTPStatus.ACCEPTED.value: {
-            "model": mlrun.common.schemas.BackgroundTaskList
-        },
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTaskList},
     },
 )
 async def disable_model_monitoring(
@@ -316,9 +310,7 @@ async def disable_model_monitoring(
 @router.delete(
     "/functions",
     responses={
-        http.HTTPStatus.ACCEPTED.value: {
-            "model": mlrun.common.schemas.BackgroundTaskList
-        },
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTaskList},
     },
 )
 async def delete_model_monitoring_function(
@@ -374,7 +366,7 @@ def set_model_monitoring_credentials(
 @dataclass
 class _FunctionSummariesParams:
     project: str
-    auth_info: mlrun.common.schemas.AuthInfo
+    auth_info: schemas.AuthInfo
     db_session: Session
     start: datetime
     end: datetime
@@ -382,13 +374,9 @@ class _FunctionSummariesParams:
 
 async def _common_function_parameters(
     project: api_constants.ProjectAnnotation,
-    auth_info: Annotated[
-        mlrun.common.schemas.AuthInfo, Depends(deps.authenticate_request)
-    ],
+    auth_info: Annotated[schemas.AuthInfo, Depends(deps.authenticate_request)],
     db_session: Annotated[Session, Depends(deps.get_db_session)],
-    client_version: str | None = Header(
-        None, alias=mlrun.common.schemas.HeaderNames.client_version
-    ),
+    client_version: str | None = Header(None, alias=schemas.HeaderNames.client_version),
     start: datetime | None = None,
     end: datetime | None = None,
 ) -> _FunctionSummariesParams:
@@ -405,7 +393,7 @@ async def _common_function_parameters(
         project=project,
         auth_info=auth_info,
         client_version=client_version,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
     )
     if (start and start.tzinfo is None) or (end and end.tzinfo is None):
         raise mlrun.errors.MLRunInvalidArgumentError(
@@ -436,7 +424,7 @@ async def get_model_monitoring_function_summaries(
     labels: list[str] = Query([], alias="label"),
     include_stats: bool = Query(True, alias="include-stats"),
     include_infra: bool = Query(True, alias="include-infra"),
-) -> list[mlrun.common.schemas.model_monitoring.FunctionSummary]:
+) -> list[schemas.model_monitoring.FunctionSummary]:
     """Get monitoring function summaries for the specified project.
 
     :param commons:       The common parameters of the request.
@@ -463,13 +451,13 @@ async def get_model_monitoring_function_summaries(
 
 @router.get(
     "/function-summaries/{function_name}",
-    response_model=mlrun.common.schemas.model_monitoring.FunctionSummary,
+    response_model=schemas.model_monitoring.FunctionSummary,
 )
 async def get_model_monitoring_function_summary(
     commons: Annotated[_FunctionSummariesParams, Depends(_common_function_parameters)],
     function_name: str,
     include_latest_metrics: bool = Query(True, alias="include-latest-metrics"),
-) -> mlrun.common.schemas.model_monitoring.FunctionSummary:
+) -> schemas.model_monitoring.FunctionSummary:
     """Get monitoring function summary for the specified project and function name.
     :param commons:                The common parameters of the request.
     :param function_name:          The name of the function to retrieve the summary for.
@@ -550,12 +538,14 @@ async def delete_model_endpoints_metrics_values(
     :param endpoint_id:      The unique IDs of the model endpoint to delete metrics values from. If none is
                              provided, the metrics values will be deleted from all project's model endpoints.
     """
-    await framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-        resource_type=mlrun.common.schemas.AuthorizationResourceTypes.model_monitoring,
-        project_name=commons.project,
-        resource_name=application_name,
-        action=mlrun.common.schemas.AuthorizationAction.delete,
-        auth_info=commons.auth_info,
+    await (
+        framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
+            resource_type=schemas.AuthorizationResourceTypes.model_monitoring,
+            project_name=commons.project,
+            resource_name=application_name,
+            action=schemas.AuthorizationAction.delete,
+            auth_info=commons.auth_info,
+        )
     )
     # call delete_application_records of the tsdb connector
     await run_in_threadpool(
@@ -568,16 +558,14 @@ async def delete_model_endpoints_metrics_values(
 @router.get(
     "/drift-over-time",
     status_code=http.HTTPStatus.OK.value,
-    response_model=mlrun.common.schemas.ModelEndpointDriftValues,
+    response_model=schemas.ModelEndpointDriftValues,
 )
 async def get_model_endpoint_drift_over_time(
     project: ProjectAnnotation,
     start: datetime | None = None,
     end: datetime | None = None,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
-        framework.api.deps.authenticate_request
-    ),
-) -> mlrun.common.schemas.ModelEndpointDriftValues:
+    auth_info: schemas.AuthInfo = Depends(framework.api.deps.authenticate_request),
+) -> schemas.ModelEndpointDriftValues:
     """
     Get drift counts over time for the project.
 
@@ -591,7 +579,7 @@ async def get_model_endpoint_drift_over_time(
     start, end = mlrun.model_monitoring.helpers.validate_time_range(start, end)
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     try:
@@ -607,7 +595,7 @@ async def get_model_endpoint_drift_over_time(
             "Returning an empty list of metric-values",
             error=mlrun.errors.err_to_str(e),
         )
-        return mlrun.common.schemas.ModelEndpointDriftValues(values=[])
+        return schemas.ModelEndpointDriftValues(values=[])
     return await run_in_threadpool(tsdb_connector.get_drift_data, start, end)
 
 
@@ -617,9 +605,7 @@ async def get_model_endpoint_drift_over_time(
 )
 async def get_model_monitoring_url(
     project: ProjectAnnotation,
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
-        framework.api.deps.authenticate_request
-    ),
+    auth_info: schemas.AuthInfo = Depends(framework.api.deps.authenticate_request),
     db_session: Session = Depends(deps.get_db_session),
 ) -> str | None:
     """
@@ -641,7 +627,7 @@ async def get_model_monitoring_url(
     """
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name=project,
-        action=mlrun.common.schemas.AuthorizationAction.read,
+        action=schemas.AuthorizationAction.read,
         auth_info=auth_info,
     )
     import services.api.crud.model_monitoring.helpers as mm_crud_helpers

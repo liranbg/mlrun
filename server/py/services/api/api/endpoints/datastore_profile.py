@@ -19,13 +19,13 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 import mlrun
-import mlrun.common.schemas
 from mlrun.datastore.datastore_profile import DatastoreProfile as DSProfile
 
 import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.singletons.db
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud
 from framework.api.utils import log_and_raise
 
@@ -37,9 +37,9 @@ router = APIRouter()
 )
 async def store_datastore_profile(
     project_name: str,
-    info: mlrun.common.schemas.DatastoreProfile,
+    info: schemas.DatastoreProfile,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -51,10 +51,10 @@ async def store_datastore_profile(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.datastore_profile,
+            schemas.AuthorizationResourceTypes.datastore_profile,
             project_name,
             info.name,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -68,10 +68,10 @@ async def store_datastore_profile(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project_name,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
-            mlrun.common.schemas.AuthorizationAction.store,
+            schemas.SecretProviderName.kubernetes,
+            schemas.AuthorizationAction.store,
             auth_info,
         )
     )
@@ -84,8 +84,8 @@ async def store_datastore_profile(
     await run_in_threadpool(
         services.api.crud.Secrets().store_project_secrets,
         project_name,
-        mlrun.common.schemas.SecretsData(
-            provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+        schemas.SecretsData(
+            provider=schemas.SecretProviderName.kubernetes,
             secrets={project_ds_name_private: info.private},
         ),
         True,
@@ -111,7 +111,7 @@ async def store_datastore_profile(
 async def list_datastore_profiles(
     project_name: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -123,7 +123,7 @@ async def list_datastore_profiles(
     )
     await framework.utils.auth.verifier.AuthVerifier().query_project_permissions(
         project_name,
-        mlrun.common.schemas.AuthorizationAction.read,
+        schemas.AuthorizationAction.read,
         auth_info,
     )
     profiles = await run_in_threadpool(
@@ -134,7 +134,7 @@ async def list_datastore_profiles(
     if len(profiles) == 0:
         return profiles
     filtered_data = await framework.utils.auth.verifier.AuthVerifier().filter_project_resources_by_permissions(
-        mlrun.common.schemas.AuthorizationResourceTypes.datastore_profile,
+        schemas.AuthorizationResourceTypes.datastore_profile,
         profiles,
         lambda profile: (project_name, profile.name),
         auth_info,
@@ -149,7 +149,7 @@ async def get_datastore_profile(
     project_name: str,
     profile: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -161,10 +161,10 @@ async def get_datastore_profile(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.datastore_profile,
+            schemas.AuthorizationResourceTypes.datastore_profile,
             project_name,
             profile,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -183,7 +183,7 @@ async def delete_datastore_profile(
     project_name: str,
     profile: str,
     db_session: Session = Depends(framework.api.deps.get_db_session),
-    auth_info: mlrun.common.schemas.AuthInfo = Depends(
+    auth_info: schemas.AuthInfo = Depends(
         framework.api.deps.authenticate_request
     ),
 ):
@@ -195,19 +195,19 @@ async def delete_datastore_profile(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.datastore_profile,
+            schemas.AuthorizationResourceTypes.datastore_profile,
             project_name,
             profile,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project_name,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.SecretProviderName.kubernetes,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -216,7 +216,7 @@ async def delete_datastore_profile(
     await run_in_threadpool(
         services.api.crud.Secrets().delete_project_secret,
         project_name,
-        mlrun.common.schemas.SecretProviderName.kubernetes,
+        schemas.SecretProviderName.kubernetes,
         project_ds_name_private,
         allow_secrets_from_k8s=True,
         allow_internal_secrets=True,

@@ -18,7 +18,6 @@ import fastapi
 import sqlalchemy.orm
 from fastapi.concurrency import run_in_threadpool
 
-import mlrun.common.schemas
 from mlrun.utils import logger
 
 import framework.api.deps
@@ -28,6 +27,7 @@ import framework.utils.background_tasks
 import framework.utils.clients.chief
 import framework.utils.helpers
 import framework.utils.project_formats
+import schemas
 import services.api.crud
 from framework.utils.singletons.project_member import get_project_member
 
@@ -38,7 +38,7 @@ router = fastapi.APIRouter()
     "/projects/{name}",
     responses={
         http.HTTPStatus.NO_CONTENT.value: {},
-        http.HTTPStatus.ACCEPTED.value: {"model": mlrun.common.schemas.BackgroundTask},
+        http.HTTPStatus.ACCEPTED.value: {"model": schemas.BackgroundTask},
     },
 )
 async def delete_project(
@@ -46,11 +46,11 @@ async def delete_project(
     response: fastapi.Response,
     request: fastapi.Request,
     name: str,
-    deletion_strategy: mlrun.common.schemas.DeletionStrategy = fastapi.Header(
-        mlrun.common.schemas.DeletionStrategy.default(),
-        alias=mlrun.common.schemas.HeaderNames.deletion_strategy,
+    deletion_strategy: schemas.DeletionStrategy = fastapi.Header(
+        schemas.DeletionStrategy.default(),
+        alias=schemas.HeaderNames.deletion_strategy,
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: sqlalchemy.orm.Session = fastapi.Depends(
@@ -81,7 +81,7 @@ async def delete_project(
     # that is why we re-route requests to chief
     if (
         mlrun.mlconf.httpdb.clusterization.role
-        != mlrun.common.schemas.ClusterizationRole.chief
+        != schemas.ClusterizationRole.chief
     ):
         logger.info(
             "Requesting to delete project, re-routing to chief",
@@ -111,7 +111,7 @@ async def delete_project(
             verifier.add_allowed_project_for_owner(name, auth_info)
         else:
             skip_permission_check = False
-            if project.status.state == mlrun.common.schemas.ProjectState.archived:
+            if project.status.state == schemas.ProjectState.archived:
                 try:
                     await run_in_threadpool(
                         get_project_member().get_project,
@@ -126,7 +126,7 @@ async def delete_project(
             if not skip_permission_check:
                 await verifier.query_project_permissions(
                     name,
-                    mlrun.common.schemas.AuthorizationAction.delete,
+                    schemas.AuthorizationAction.delete,
                     auth_info,
                 )
 
@@ -139,7 +139,7 @@ async def delete_project(
             name,
             auth_info,
         )
-        if deletion_strategy == mlrun.common.schemas.DeletionStrategy.check:
+        if deletion_strategy == schemas.DeletionStrategy.check:
             # if the strategy is checked, we don't want to delete the project, only to check if it is empty
             return fastapi.Response(status_code=http.HTTPStatus.NO_CONTENT.value)
 

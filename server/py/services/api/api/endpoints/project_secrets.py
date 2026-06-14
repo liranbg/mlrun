@@ -18,12 +18,12 @@ import fastapi
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
-import mlrun.common.schemas
 import mlrun.errors
 
 import framework.api.deps
 import framework.utils.auth.verifier
 import framework.utils.singletons.project_member
+import schemas
 import services.api.crud
 
 router = fastapi.APIRouter()
@@ -32,8 +32,8 @@ router = fastapi.APIRouter()
 @router.post("/projects/{project}/secrets", status_code=HTTPStatus.CREATED.value)
 async def store_project_secrets(
     project: str,
-    secrets: mlrun.common.schemas.SecretsData,
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    secrets: schemas.SecretsData,
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -50,10 +50,10 @@ async def store_project_secrets(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project,
             secrets.provider,
-            mlrun.common.schemas.AuthorizationAction.create,
+            schemas.AuthorizationAction.create,
             auth_info,
         )
     )
@@ -67,9 +67,9 @@ async def store_project_secrets(
 @router.delete("/projects/{project}/secrets", status_code=HTTPStatus.NO_CONTENT.value)
 async def delete_project_secrets(
     project: str,
-    provider: mlrun.common.schemas.SecretProviderName = mlrun.common.schemas.SecretProviderName.kubernetes,
+    provider: schemas.SecretProviderName = schemas.SecretProviderName.kubernetes,
     secrets: list[str] = fastapi.Query(None, alias="secret"),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -85,10 +85,10 @@ async def delete_project_secrets(
 
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project,
             provider,
-            mlrun.common.schemas.AuthorizationAction.delete,
+            schemas.AuthorizationAction.delete,
             auth_info,
         )
     )
@@ -101,15 +101,15 @@ async def delete_project_secrets(
 
 @router.get(
     "/projects/{project}/secret-keys",
-    response_model=mlrun.common.schemas.SecretKeysData,
+    response_model=schemas.SecretKeysData,
 )
 async def list_project_secret_keys(
     project: str,
-    provider: mlrun.common.schemas.SecretProviderName = mlrun.common.schemas.SecretProviderName.kubernetes,
+    provider: schemas.SecretProviderName = schemas.SecretProviderName.kubernetes,
     token: str = fastapi.Header(
-        None, alias=mlrun.common.schemas.HeaderNames.secret_store_token
+        None, alias=schemas.HeaderNames.secret_store_token
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -122,10 +122,10 @@ async def list_project_secret_keys(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project,
             provider,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )
@@ -135,16 +135,16 @@ async def list_project_secret_keys(
 
 
 @router.get(
-    "/projects/{project}/secrets", response_model=mlrun.common.schemas.SecretsData
+    "/projects/{project}/secrets", response_model=schemas.SecretsData
 )
 async def list_project_secrets(
     project: str,
     secrets: list[str] = fastapi.Query(None, alias="secret"),
-    provider: mlrun.common.schemas.SecretProviderName = mlrun.common.schemas.SecretProviderName.kubernetes,
+    provider: schemas.SecretProviderName = schemas.SecretProviderName.kubernetes,
     token: str = fastapi.Header(
-        None, alias=mlrun.common.schemas.HeaderNames.secret_store_token
+        None, alias=schemas.HeaderNames.secret_store_token
     ),
-    auth_info: mlrun.common.schemas.AuthInfo = fastapi.Depends(
+    auth_info: schemas.AuthInfo = fastapi.Depends(
         framework.api.deps.authenticate_request
     ),
     db_session: Session = fastapi.Depends(framework.api.deps.get_db_session),
@@ -157,10 +157,10 @@ async def list_project_secrets(
     )
     await (
         framework.utils.auth.verifier.AuthVerifier().query_project_resource_permissions(
-            mlrun.common.schemas.AuthorizationResourceTypes.secret,
+            schemas.AuthorizationResourceTypes.secret,
             project,
             provider,
-            mlrun.common.schemas.AuthorizationAction.read,
+            schemas.AuthorizationAction.read,
             auth_info,
         )
     )

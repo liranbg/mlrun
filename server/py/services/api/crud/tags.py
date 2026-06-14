@@ -14,13 +14,13 @@
 
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.utils.singleton
 
 import framework.db.sqldb.db
 import framework.utils.singletons.db
+import schemas
 
 kind_to_function_names = {
     "artifact": {
@@ -39,7 +39,7 @@ class Tags(
         db_session: sqlalchemy.orm.Session,
         project: str,
         tag: str,
-        tag_objects: mlrun.common.schemas.TagObjects,
+        tag_objects: schemas.TagObjects,
     ):
         overwrite_func = kind_to_function_names.get(tag_objects.kind, {}).get(
             "overwrite"
@@ -60,7 +60,7 @@ class Tags(
         db_session: sqlalchemy.orm.Session,
         project: str,
         tag: str,
-        tag_objects: mlrun.common.schemas.TagObjects,
+        tag_objects: schemas.TagObjects,
     ):
         append_func = kind_to_function_names.get(tag_objects.kind, {}).get("append")
         if not append_func:
@@ -79,7 +79,7 @@ class Tags(
         db_session: sqlalchemy.orm.Session,
         project: str,
         tag: str,
-        tag_objects: mlrun.common.schemas.TagObjects,
+        tag_objects: schemas.TagObjects,
     ):
         delete_func = kind_to_function_names.get(tag_objects.kind, {}).get("delete")
         if not delete_func:

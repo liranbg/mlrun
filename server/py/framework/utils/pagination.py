@@ -19,7 +19,6 @@ import orjson
 import pydantic.v1
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.singleton
 from mlrun import mlconf
@@ -27,6 +26,7 @@ from mlrun.utils import logger
 
 import framework.utils.asyncio
 import framework.utils.pagination_cache
+import schemas
 
 
 def _generate_pydantic_schema_from_method_signature(
@@ -94,7 +94,7 @@ class Paginator(metaclass=mlrun.utils.singleton.Singleton):
         session: sqlalchemy.orm.Session,
         method: typing.Callable,
         filter_: typing.Callable,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
         token: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
@@ -107,7 +107,7 @@ class Paginator(metaclass=mlrun.utils.singleton.Singleton):
         There is an option here to overflow and to receive more items than the page size.
         And actually the maximum number of items that can be returned is page_size * 2 - 1.
         """
-        last_pagination_info = mlrun.common.schemas.pagination.PaginationInfo()
+        last_pagination_info = schemas.pagination.PaginationInfo()
         current_page = page
         result = []
 
@@ -140,12 +140,12 @@ class Paginator(metaclass=mlrun.utils.singleton.Singleton):
         self,
         session: sqlalchemy.orm.Session,
         method: typing.Callable,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
         token: str | None = None,
         page: int | None = None,
         page_size: int | None = None,
         **method_kwargs,
-    ) -> tuple[typing.Any, mlrun.common.schemas.pagination.PaginationInfo | None]:
+    ) -> tuple[typing.Any, schemas.pagination.PaginationInfo | None]:
         if not PaginatedMethods.method_is_supported(method):
             raise NotImplementedError(
                 f"Pagination is not supported for method {method.__name__}"
@@ -201,7 +201,7 @@ class Paginator(metaclass=mlrun.utils.singleton.Singleton):
         items = await framework.utils.asyncio.await_or_call_in_threadpool(
             method, session, **method_kwargs, offset=offset, limit=limit
         )
-        pagination_info = mlrun.common.schemas.pagination.PaginationInfo(
+        pagination_info = schemas.pagination.PaginationInfo(
             page=page, page_size=page_size, page_token=token
         )
 
@@ -224,7 +224,7 @@ class Paginator(metaclass=mlrun.utils.singleton.Singleton):
         self,
         session: sqlalchemy.orm.Session,
         method: typing.Callable,
-        auth_info: mlrun.common.schemas.AuthInfo | None = None,
+        auth_info: schemas.AuthInfo | None = None,
         token: str | None = None,
         page: int | None = None,
         page_size: int | None = None,

@@ -14,10 +14,10 @@
 
 import typing
 
-import mlrun.common.schemas
 import mlrun.utils.singleton
 
 import framework.utils.auth.providers.base as auth
+import schemas
 
 
 class Provider(
@@ -27,8 +27,8 @@ class Provider(
     async def query_permissions(
         self,
         resource: str,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
         raise_on_forbidden: bool = True,
     ) -> bool:
         return True
@@ -37,12 +37,12 @@ class Provider(
         self,
         resources: list,
         opa_resource_extractor: typing.Callable,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
     ) -> list:
         return resources
 
     def add_allowed_project_for_owner(
-        self, project_name: str, auth_info: mlrun.common.schemas.AuthInfo
+        self, project_name: str, auth_info: schemas.AuthInfo
     ):
         pass

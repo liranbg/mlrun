@@ -23,7 +23,6 @@ import mlrun.artifacts
 import mlrun.common.constants as mlrun_constants
 import mlrun.common.formatters
 import mlrun.common.runtimes.constants
-import mlrun.common.schemas
 import mlrun.config
 import mlrun.errors
 import mlrun.lists
@@ -39,6 +38,7 @@ import framework.utils.background_tasks
 import framework.utils.clients.log_collector
 import framework.utils.notifications
 import framework.utils.singletons.db
+import schemas
 import services.api.runtime_handlers
 
 
@@ -152,10 +152,10 @@ class Runs(
         last_update_time_to: typing.Union[str, datetime.datetime] | None = None,
         end_time_from: typing.Union[str, datetime.datetime] | None = None,
         end_time_to: typing.Union[str, datetime.datetime] | None = None,
-        partition_by: mlrun.common.schemas.RunPartitionByField = None,
+        partition_by: schemas.RunPartitionByField = None,
         rows_per_partition: int = 1,
-        partition_sort_by: mlrun.common.schemas.SortField = None,
-        partition_order: mlrun.common.schemas.OrderType = mlrun.common.schemas.OrderType.desc,
+        partition_sort_by: schemas.SortField = None,
+        partition_order: schemas.OrderType = schemas.OrderType.desc,
         max_partitions: int = 0,
         requested_logs: bool | None = None,
         return_as_run_structs: bool = True,
@@ -183,8 +183,8 @@ class Runs(
             start_time_from = (
                 datetime.datetime.now() - datetime.timedelta(days=7)
             ).isoformat()
-            partition_by = mlrun.common.schemas.RunPartitionByField.project_and_name
-            partition_sort_by = mlrun.common.schemas.SortField.updated
+            partition_by = schemas.RunPartitionByField.project_and_name
+            partition_sort_by = schemas.SortField.updated
 
         if isinstance(start_time_from, str):
             start_time_from = mlrun.utils.helpers.datetime_from_iso(start_time_from)
@@ -578,7 +578,7 @@ class Runs(
     async def _post_delete_run(project, uid):
         if (
             mlrun.mlconf.log_collector.mode
-            != mlrun.common.schemas.LogsCollectorMode.legacy
+            != schemas.LogsCollectorMode.legacy
         ):
             await services.api.crud.Logs().delete_run_logs(project, uid)
         else:
@@ -592,7 +592,7 @@ class Runs(
     async def _post_delete_runs(project: str, uids: list[str]):
         if (
             mlrun.mlconf.log_collector.mode
-            != mlrun.common.schemas.LogsCollectorMode.legacy
+            != schemas.LogsCollectorMode.legacy
         ):
             await services.api.crud.Logs().delete_runs_logs(project, uids)
         else:

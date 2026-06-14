@@ -16,7 +16,7 @@ from typing import Annotated
 
 import fastapi
 
-from mlrun.common.schemas.model_monitoring.constants import (
+from schemas.model_monitoring.constants import (
     MODEL_ENDPOINT_ID_PATTERN,
     PROJECT_PATTERN,
 )

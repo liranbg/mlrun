@@ -15,7 +15,7 @@
 import abc
 import datetime
 
-import mlrun.common.schemas
+import schemas
 
 
 class Member(abc.ABC):
@@ -23,8 +23,8 @@ class Member(abc.ABC):
     def create_project(
         self,
         session: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         wait_for_completion: bool = True,
     ) -> bool:
         pass
@@ -34,8 +34,8 @@ class Member(abc.ABC):
         self,
         session: str,
         name: str,
-        project: mlrun.common.schemas.Project,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        project: schemas.Project,
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
     ):
         pass
 
@@ -44,8 +44,8 @@ class Member(abc.ABC):
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-        deletion_strategy: mlrun.common.schemas.DeletionStrategy = mlrun.common.schemas.DeletionStrategy.default(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+        deletion_strategy: schemas.DeletionStrategy = schemas.DeletionStrategy.default(),
         wait_for_completion: bool = True,
     ) -> bool:
         pass
@@ -54,9 +54,9 @@ class Member(abc.ABC):
     def list_projects(
         self,
         session: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
         updated_after: datetime.datetime | None = None,
-    ) -> tuple[list[mlrun.common.schemas.Project], datetime.datetime | None]:
+    ) -> tuple[list[schemas.Project], datetime.datetime | None]:
         pass
 
     @abc.abstractmethod
@@ -64,14 +64,14 @@ class Member(abc.ABC):
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.Project:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.Project:
         pass
 
     @abc.abstractmethod
     def format_as_leader_project(
-        self, project: mlrun.common.schemas.Project
-    ) -> mlrun.common.schemas.IguazioProject:
+        self, project: schemas.Project
+    ) -> schemas.IguazioProject:
         pass
 
     @abc.abstractmethod
@@ -79,6 +79,6 @@ class Member(abc.ABC):
         self,
         session: str,
         name: str,
-        auth_info: mlrun.common.schemas.AuthInfo = mlrun.common.schemas.AuthInfo(),
-    ) -> mlrun.common.schemas.ProjectOwner:
+        auth_info: schemas.AuthInfo = schemas.AuthInfo(),
+    ) -> schemas.ProjectOwner:
         pass

@@ -20,7 +20,6 @@ import typing
 
 import humanfriendly
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils.helpers
 import mlrun.utils.singleton
@@ -29,6 +28,7 @@ from mlrun.utils import logger
 
 import framework.utils.auth.providers.base as auth
 import framework.utils.helpers
+import schemas
 
 
 class Provider(
@@ -68,22 +68,22 @@ class Provider(
     async def query_permissions(
         self,
         resource: str,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
         raise_on_forbidden: bool = True,
     ) -> bool:
         # store is not really a verb in our OPA manifest, we map it to 2 query permissions requests (create & update)
-        if action == mlrun.common.schemas.AuthorizationAction.store:
+        if action == schemas.AuthorizationAction.store:
             results = await asyncio.gather(
                 self.query_permissions(
                     resource,
-                    mlrun.common.schemas.AuthorizationAction.create,
+                    schemas.AuthorizationAction.create,
                     auth_info,
                     raise_on_forbidden,
                 ),
                 self.query_permissions(
                     resource,
-                    mlrun.common.schemas.AuthorizationAction.update,
+                    schemas.AuthorizationAction.update,
                     auth_info,
                     raise_on_forbidden,
                 ),
@@ -116,11 +116,11 @@ class Provider(
         self,
         resources: list,
         opa_resource_extractor: typing.Callable,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
     ) -> list:
         # store is not really a verb in our OPA manifest, we map it to 2 query permissions requests (create & update)
-        if action == mlrun.common.schemas.AuthorizationAction.store:
+        if action == schemas.AuthorizationAction.store:
             raise NotImplementedError("Store action is not supported in filtering")
         if framework.utils.helpers.is_request_from_leader(
             auth_info.projects_role, leader_name=self._leader_name
@@ -154,7 +154,7 @@ class Provider(
         return allowed_resources
 
     def add_allowed_project_for_owner(
-        self, project_name: str, auth_info: mlrun.common.schemas.AuthInfo
+        self, project_name: str, auth_info: schemas.AuthInfo
     ):
         if (
             not auth_info.user_id
@@ -173,7 +173,7 @@ class Provider(
         self._allowed_project_owners_cache[auth_info.user_id] = allowed_projects
 
     def _check_allowed_project_owners_cache(
-        self, resource: str, auth_info: mlrun.common.schemas.AuthInfo
+        self, resource: str, auth_info: schemas.AuthInfo
     ):
         # Cache shouldn't be big, simply clean it on get instead of scheduling it
         self._clean_expired_records_from_cache()
@@ -239,8 +239,8 @@ class Provider(
     @staticmethod
     def _generate_permission_request_body(
         resource: str,
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
     ) -> dict:
         body = {
             "input": {
@@ -254,8 +254,8 @@ class Provider(
     @staticmethod
     def _generate_filter_request_body(
         resources: list[str],
-        action: mlrun.common.schemas.AuthorizationAction,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        action: schemas.AuthorizationAction,
+        auth_info: schemas.AuthInfo,
     ) -> dict:
         body = {
             "input": {

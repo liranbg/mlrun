@@ -24,7 +24,6 @@ from fastapi.concurrency import run_in_threadpool
 import mlrun.auth.utils
 import mlrun.common
 import mlrun.common.constants
-import mlrun.common.schemas
 import mlrun.common.secrets
 import mlrun.errors
 import mlrun.k8s_utils
@@ -37,6 +36,7 @@ from mlrun.utils import logger
 
 import framework.utils.clients.iguazio.v4
 import framework.utils.singletons.k8s
+import schemas
 import services.api
 import services.api.utils.events.events_factory as events_factory
 
@@ -108,7 +108,7 @@ class Secrets(
     def store_project_secrets(
         self,
         project: str,
-        secrets: mlrun.common.schemas.SecretsData,
+        secrets: schemas.SecretsData,
         allow_internal_secrets: bool = False,
         key_map_secret_key: str | None = None,
         allow_storing_key_maps: bool = False,
@@ -128,14 +128,14 @@ class Secrets(
             allow_storing_key_maps,
         )
 
-        if secrets.provider == mlrun.common.schemas.SecretProviderName.vault:
+        if secrets.provider == schemas.SecretProviderName.vault:
             # Init is idempotent and will do nothing if infra is already in place
             mlrun.utils.vault.init_project_vault_configuration(project)
 
             # If no secrets were passed, no need to touch the actual secrets.
             if secrets_to_store:
                 mlrun.utils.vault.store_vault_project_secrets(project, secrets_to_store)
-        elif secrets.provider == mlrun.common.schemas.SecretProviderName.kubernetes:
+        elif secrets.provider == schemas.SecretProviderName.kubernetes:
             if self.secrets_provider:
                 (
                     secret_name,
@@ -166,24 +166,24 @@ class Secrets(
 
     def read_auth_secret(
         self, secret_name, raise_on_not_found=False
-    ) -> mlrun.common.schemas.AuthSecretData:
+    ) -> schemas.AuthSecretData:
         (
             username,
             access_key,
         ) = self.secrets_provider.read_auth_secret(
             secret_name, raise_on_not_found=raise_on_not_found
         )
-        return mlrun.common.schemas.AuthSecretData(
-            provider=mlrun.common.schemas.SecretProviderName.kubernetes,
+        return schemas.AuthSecretData(
+            provider=schemas.SecretProviderName.kubernetes,
             username=username,
             access_key=access_key,
         )
 
     def store_auth_secret(
         self,
-        secret: mlrun.common.schemas.AuthSecretData,
+        secret: schemas.AuthSecretData,
     ) -> str:
-        if secret.provider != mlrun.common.schemas.SecretProviderName.kubernetes:
+        if secret.provider != schemas.SecretProviderName.kubernetes:
             raise mlrun.errors.MLRunInvalidArgumentError(
                 f"Storing auth secret is not implemented for provider {secret.provider}"
             )
@@ -202,10 +202,10 @@ class Secrets(
 
     def delete_auth_secret(
         self,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secret_name: str,
     ):
-        if provider != mlrun.common.schemas.SecretProviderName.kubernetes:
+        if provider != schemas.SecretProviderName.kubernetes:
             raise mlrun.errors.MLRunInvalidArgumentError(
                 f"Storing auth secret is not implemented for provider {provider}"
             )
@@ -218,7 +218,7 @@ class Secrets(
     def delete_project_secrets(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secrets: list[str] | None = None,
         allow_internal_secrets: bool = False,
     ):
@@ -240,11 +240,11 @@ class Secrets(
                     # nothing to remove - return
                     return
 
-        if provider == mlrun.common.schemas.SecretProviderName.vault:
+        if provider == schemas.SecretProviderName.vault:
             raise mlrun.errors.MLRunInvalidArgumentError(
                 f"Delete secret is not implemented for provider {provider}"
             )
-        elif provider == mlrun.common.schemas.SecretProviderName.kubernetes:
+        elif provider == schemas.SecretProviderName.kubernetes:
             if self.secrets_provider:
                 (
                     secret_name,
@@ -273,11 +273,11 @@ class Secrets(
     def list_project_secret_keys(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         token: str | None = None,
         allow_internal_secrets: bool = False,
-    ) -> mlrun.common.schemas.SecretKeysData:
-        if provider == mlrun.common.schemas.SecretProviderName.vault:
+    ) -> schemas.SecretKeysData:
+        if provider == schemas.SecretProviderName.vault:
             if not token:
                 raise mlrun.errors.MLRunInvalidArgumentError(
                     "Vault list project secret keys request without providing token"
@@ -286,7 +286,7 @@ class Secrets(
             vault = mlrun.utils.vault.VaultStore(token)
             secret_values = vault.get_secrets(None, project=project)
             secret_keys = list(secret_values.keys())
-        elif provider == mlrun.common.schemas.SecretProviderName.kubernetes:
+        elif provider == schemas.SecretProviderName.kubernetes:
             if token:
                 raise mlrun.errors.MLRunInvalidArgumentError(
                     "Cannot specify token when requesting k8s secret keys"
@@ -312,20 +312,20 @@ class Secrets(
                 )
             )
 
-        return mlrun.common.schemas.SecretKeysData(
+        return schemas.SecretKeysData(
             provider=provider, secret_keys=secret_keys
         )
 
     def list_project_secrets(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secrets: list[str] | None = None,
         token: str | None = None,
         allow_secrets_from_k8s: bool = False,
         allow_internal_secrets: bool = False,
-    ) -> mlrun.common.schemas.SecretsData:
-        if provider == mlrun.common.schemas.SecretProviderName.vault:
+    ) -> schemas.SecretsData:
+        if provider == schemas.SecretProviderName.vault:
             if not token:
                 raise mlrun.errors.MLRunInvalidArgumentError(
                     "Vault list project secrets request without providing token"
@@ -333,7 +333,7 @@ class Secrets(
 
             vault = mlrun.utils.vault.VaultStore(token)
             secrets_data = vault.get_secrets(secrets, project=project)
-        elif provider == mlrun.common.schemas.SecretProviderName.kubernetes:
+        elif provider == schemas.SecretProviderName.kubernetes:
             if not allow_secrets_from_k8s:
                 raise mlrun.errors.MLRunAccessDeniedError(
                     "Not allowed to list secrets data from kubernetes provider"
@@ -352,12 +352,12 @@ class Secrets(
                 for key, value in secrets_data.items()
                 if not self.is_internal_project_secret_key(key)
             }
-        return mlrun.common.schemas.SecretsData(provider=provider, secrets=secrets_data)
+        return schemas.SecretsData(provider=provider, secrets=secrets_data)
 
     def delete_project_secret(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secret_key: str,
         token: str | None = None,
         allow_secrets_from_k8s: bool = False,
@@ -383,7 +383,7 @@ class Secrets(
             if key_map:
                 self.store_project_secrets(
                     project,
-                    mlrun.common.schemas.SecretsData(
+                    schemas.SecretsData(
                         provider=provider,
                         secrets={key_map_secret_key: json.dumps(key_map)},
                     ),
@@ -398,7 +398,7 @@ class Secrets(
     def get_project_secret(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secret_key: str,
         token: str | None = None,
         allow_secrets_from_k8s: bool = False,
@@ -429,10 +429,10 @@ class Secrets(
 
     def store_secret_tokens(
         self,
-        secret_tokens: list[mlrun.common.schemas.SecretToken],
-        auth_info: mlrun.common.schemas.AuthInfo,
+        secret_tokens: list[schemas.SecretToken],
+        auth_info: schemas.AuthInfo,
         force: bool = False,
-    ) -> mlrun.common.schemas.StoreSecretTokensResponse:
+    ) -> schemas.StoreSecretTokensResponse:
         """
         Validate and store offline tokens as Kubernetes secrets.
 
@@ -485,27 +485,27 @@ class Secrets(
             logger.debug(
                 "Finished storing tokens",
                 created_tokens=token_actions[
-                    mlrun.common.schemas.SecretEventActions.created
+                    schemas.SecretEventActions.created
                 ],
                 updated_tokens=token_actions[
-                    mlrun.common.schemas.SecretEventActions.updated
+                    schemas.SecretEventActions.updated
                 ],
             )
 
-        return mlrun.common.schemas.StoreSecretTokensResponse(
+        return schemas.StoreSecretTokensResponse(
             created_tokens=token_actions[
-                mlrun.common.schemas.SecretEventActions.created
+                schemas.SecretEventActions.created
             ],
             updated_tokens=token_actions[
-                mlrun.common.schemas.SecretEventActions.updated
+                schemas.SecretEventActions.updated
             ],
         )
 
     def list_secret_tokens(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         username: str | None = None,
-    ) -> mlrun.common.schemas.ListSecretTokensResponse:
+    ) -> schemas.ListSecretTokensResponse:
         """
         List offline token secrets stored in Kubernetes.
 
@@ -524,7 +524,7 @@ class Secrets(
             username=target_username,
         )
 
-        return mlrun.common.schemas.ListSecretTokensResponse(
+        return schemas.ListSecretTokensResponse(
             secret_tokens=secret_tokens
         )
 
@@ -586,8 +586,8 @@ class Secrets(
         self,
         token_name: str,
         username: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
-    ) -> mlrun.common.schemas.DeleteSecretTokenResponse:
+        auth_info: schemas.AuthInfo,
+    ) -> schemas.DeleteSecretTokenResponse:
         """
         Delete a stored offline token for a user and its corresponding Kubernetes secret.
 
@@ -634,7 +634,7 @@ class Secrets(
                 target_username=username,
                 token_name=token_name,
             )
-            return mlrun.common.schemas.DeleteSecretTokenResponse(
+            return schemas.DeleteSecretTokenResponse(
                 deleted=False, username=username
             )
 
@@ -644,15 +644,15 @@ class Secrets(
             target_username=username,
             token_name=token_name,
         )
-        return mlrun.common.schemas.DeleteSecretTokenResponse(
+        return schemas.DeleteSecretTokenResponse(
             deleted=True, username=username
         )
 
     async def delete_secret_tokens(
         self,
         username: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
-    ) -> mlrun.common.schemas.DeleteSecretTokensResponse:
+        auth_info: schemas.AuthInfo,
+    ) -> schemas.DeleteSecretTokensResponse:
         """
         Delete the Kubernetes secrets storing tokens for a user.
 
@@ -682,13 +682,13 @@ class Secrets(
             requesting_user=auth_info.username,
         )
 
-        tokens: list[mlrun.common.schemas.SecretTokenInfo] = await run_in_threadpool(
+        tokens: list[schemas.SecretTokenInfo] = await run_in_threadpool(
             self.secrets_provider.list_user_token_secrets,
             username=target_username,
         )
 
         if not tokens:
-            return mlrun.common.schemas.DeleteSecretTokensResponse(
+            return schemas.DeleteSecretTokensResponse(
                 deleted_count=0, failed_tokens=[], username=target_username
             )
 
@@ -702,7 +702,7 @@ class Secrets(
         )
 
         async def _delete_with_semaphore(
-            token_info: mlrun.common.schemas.SecretTokenInfo,
+            token_info: schemas.SecretTokenInfo,
         ):
             async with semaphore:
                 await run_in_threadpool(
@@ -746,7 +746,7 @@ class Secrets(
             failed_count=len(failed_tokens),
         )
 
-        return mlrun.common.schemas.DeleteSecretTokensResponse(
+        return schemas.DeleteSecretTokensResponse(
             deleted_count=deleted_count,
             failed_tokens=failed_tokens,
             username=target_username,
@@ -755,8 +755,8 @@ class Secrets(
     def get_secret_token(
         self,
         token_name: str,
-        auth_info: mlrun.common.schemas.AuthInfo,
-    ) -> mlrun.common.schemas.SecretToken:
+        auth_info: schemas.AuthInfo,
+    ) -> schemas.SecretToken:
         """
         Get a specific offline token stored for a user by token name.
 
@@ -772,14 +772,14 @@ class Secrets(
             token_name=token_name,
         )
 
-        return mlrun.common.schemas.SecretToken(
+        return schemas.SecretToken(
             name=token_name,
             token=token_value,
         )
 
     def _get_user_id(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         username: str | None,
     ) -> str:
         """
@@ -815,7 +815,7 @@ class Secrets(
 
     def _get_target_username(
         self,
-        auth_info: mlrun.common.schemas.AuthInfo,
+        auth_info: schemas.AuthInfo,
         username: str | None,
     ) -> str:
         if username:
@@ -830,7 +830,7 @@ class Secrets(
     def _resolve_project_secret_key(
         self,
         project: str,
-        provider: mlrun.common.schemas.SecretProviderName,
+        provider: schemas.SecretProviderName,
         secret_key: str,
         token: str | None = None,
         allow_secrets_from_k8s: bool = False,
@@ -838,7 +838,7 @@ class Secrets(
         key_map_secret_key: str | None = None,
     ) -> tuple[bool, str]:
         if key_map_secret_key:
-            if provider != mlrun.common.schemas.SecretProviderName.kubernetes:
+            if provider != schemas.SecretProviderName.kubernetes:
                 raise mlrun.errors.MLRunInvalidArgumentError(
                     f"Secret using key map is not implemented for provider {provider}"
                 )
@@ -860,7 +860,7 @@ class Secrets(
     def _validate_and_enrich_project_secrets_to_store(
         self,
         project: str,
-        secrets: mlrun.common.schemas.SecretsData,
+        secrets: schemas.SecretsData,
         allow_internal_secrets: bool = False,
         key_map_secret_key: str | None = None,
         allow_storing_key_maps: bool = False,
@@ -885,7 +885,7 @@ class Secrets(
             if key_map_secret_key:
                 if (
                     secrets.provider
-                    != mlrun.common.schemas.SecretProviderName.kubernetes
+                    != schemas.SecretProviderName.kubernetes
                 ):
                     raise mlrun.errors.MLRunInvalidArgumentError(
                         f"Storing secret using key map is not implemented for provider {secrets.provider}"
@@ -934,7 +934,7 @@ class Secrets(
     ) -> dict | None:
         secrets_data = self.list_project_secrets(
             project,
-            mlrun.common.schemas.SecretProviderName.kubernetes,
+            schemas.SecretProviderName.kubernetes,
             [key_map_secret_key],
             allow_secrets_from_k8s=True,
             allow_internal_secrets=True,
@@ -967,7 +967,7 @@ def get_project_secret_provider(project: str) -> typing.Callable:
     def secret_provider(key: str):
         return services.api.crud.secrets.Secrets().get_project_secret(
             project=project,
-            provider=mlrun.common.schemas.secret.SecretProviderName.kubernetes,
+            provider=schemas.secret.SecretProviderName.kubernetes,
             allow_secrets_from_k8s=True,
             secret_key=key,
         )

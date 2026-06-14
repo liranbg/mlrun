@@ -19,10 +19,10 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 import mlrun
-import mlrun.common.schemas
 
 import framework.db.session
 import framework.utils.auth.verifier
+import schemas
 
 
 def get_db_session(
@@ -42,7 +42,7 @@ def get_db_session(
         yield None
 
 
-async def authenticate_request(request: Request) -> mlrun.common.schemas.AuthInfo:
+async def authenticate_request(request: Request) -> schemas.AuthInfo:
     return await framework.utils.auth.verifier.AuthVerifier().authenticate_request(
         request
     )
@@ -53,7 +53,7 @@ def verify_api_state(request: Request):
         request.scope
     )
     path = path_with_query_string.split("?")[0]
-    if mlrun.mlconf.httpdb.state == mlrun.common.schemas.APIStates.offline:
+    if mlrun.mlconf.httpdb.state == schemas.APIStates.offline:
         enabled_endpoints = [
             # we want to stay healthy
             "healthz",
@@ -63,10 +63,10 @@ def verify_api_state(request: Request):
         if not any(enabled_endpoint in path for enabled_endpoint in enabled_endpoints):
             raise mlrun.errors.MLRunPreconditionFailedError("API is in offline state")
     if mlrun.mlconf.httpdb.state in [
-        mlrun.common.schemas.APIStates.waiting_for_migrations,
-        mlrun.common.schemas.APIStates.migrations_in_progress,
-        mlrun.common.schemas.APIStates.migrations_failed,
-        mlrun.common.schemas.APIStates.waiting_for_chief,
+        schemas.APIStates.waiting_for_migrations,
+        schemas.APIStates.migrations_in_progress,
+        schemas.APIStates.migrations_failed,
+        schemas.APIStates.waiting_for_chief,
     ]:
         enabled_endpoints = [
             # allow healthz requests
@@ -83,7 +83,7 @@ def verify_api_state(request: Request):
             "user-secrets/tokens",
         ]
         if not any(enabled_endpoint in path for enabled_endpoint in enabled_endpoints):
-            message = mlrun.common.schemas.APIStates.description(
+            message = schemas.APIStates.description(
                 mlrun.mlconf.httpdb.state
             )
             raise mlrun.errors.MLRunPreconditionFailedError(message)

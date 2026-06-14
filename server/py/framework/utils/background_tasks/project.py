@@ -21,13 +21,13 @@ import fastapi
 import fastapi.concurrency
 import sqlalchemy.orm
 
-import mlrun.common.schemas
 import mlrun.errors
 import mlrun.utils
 import mlrun.utils.singleton
 
 import framework.utils.background_tasks.common
 import framework.utils.singletons.db
+import schemas
 
 
 class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
@@ -42,7 +42,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         labels: dict[str, str] | None = None,
         *args,
         **kwargs,
-    ) -> mlrun.common.schemas.BackgroundTask:
+    ) -> schemas.BackgroundTask:
         name = name or str(uuid.uuid4())
         mlrun.utils.logger.debug(
             "Creating background task",
@@ -54,7 +54,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
             session=db_session,
             name=name,
             project=project,
-            state=mlrun.common.schemas.BackgroundTaskState.running,
+            state=schemas.BackgroundTaskState.running,
             error=None,
             timeout=timeout,
             labels=labels,
@@ -75,7 +75,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         db_session: sqlalchemy.orm.Session,
         name: str,
         project: str,
-    ) -> mlrun.common.schemas.BackgroundTask:
+    ) -> schemas.BackgroundTask:
         return framework.utils.singletons.db.get_db().get_background_task(
             db_session,
             name,
@@ -100,9 +100,9 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
     def get_background_task_by_state_and_labels(
         self,
         db_session: sqlalchemy.orm.Session,
-        status: mlrun.common.schemas.BackgroundTaskState,
+        status: schemas.BackgroundTaskState,
         labels: dict[str, str],
-    ) -> mlrun.common.schemas.BackgroundTask:
+    ) -> schemas.BackgroundTask:
         return framework.utils.singletons.db.get_db().get_background_task_by_state_and_labels(
             session=db_session,
             status=status,
@@ -118,7 +118,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         created_to: datetime.datetime | None = None,
         last_update_time_from: datetime.datetime | None = None,
         last_update_time_to: datetime.datetime | None = None,
-    ) -> list[mlrun.common.schemas.BackgroundTask]:
+    ) -> list[schemas.BackgroundTask]:
         return framework.utils.singletons.db.get_db().list_background_tasks(
             db_session,
             project,
@@ -140,7 +140,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
         **kwargs,
     ):
         error = None
-        state = mlrun.common.schemas.BackgroundTaskState.succeeded
+        state = schemas.BackgroundTaskState.succeeded
         try:
             if asyncio.iscoroutinefunction(function):
                 await function(*args, **kwargs)
@@ -155,7 +155,7 @@ class ProjectBackgroundTasksHandler(metaclass=mlrun.utils.singleton.Singleton):
                 tb=traceback.format_exc(),
                 name=name,
             )
-            state = mlrun.common.schemas.BackgroundTaskState.failed
+            state = schemas.BackgroundTaskState.failed
             error = err_str
         finally:
             framework.utils.singletons.db.get_db().store_background_task(

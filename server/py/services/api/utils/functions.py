@@ -16,13 +16,13 @@ import os
 import traceback
 from http import HTTPStatus
 
-import mlrun.common.schemas
 from mlrun.errors import err_to_str
 from mlrun.run import new_function
 from mlrun.runtimes import RuntimeKinds
 from mlrun.utils import logger
 
 import framework.api.utils
+import schemas
 import services.api.launcher
 from services.api.api.endpoints.nuclio import _deploy_nuclio_runtime
 from services.api.utils.builder import build_runtime
@@ -30,7 +30,7 @@ from services.api.utils.builder import build_runtime
 
 def build_function(
     db_session,
-    auth_info: mlrun.common.schemas.AuthInfo,
+    auth_info: schemas.AuthInfo,
     function,
     with_mlrun=True,
     skip_deployed=False,
