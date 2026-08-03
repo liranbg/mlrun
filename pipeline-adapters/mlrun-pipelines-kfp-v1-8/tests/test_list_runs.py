@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import unittest.mock
 
 import pytest
@@ -106,3 +107,38 @@ def test_paginate_runs_forwards_filter_and_sort_on_every_page(client, monkeypatc
     for call in list_runs_mock.call_args_list:
         assert call.kwargs["sort_by"] == "created_at desc"
         assert call.kwargs["filter_json"] == '{"predicates": []}'
+
+
+def test_list_runs_forwards_filter_and_sort_when_caller_paginates_manually(
+    client, monkeypatch
+):
+    """
+    When the caller supplies its own page_token (e.g. the pipelines-counters loop
+    driving pagination one page at a time), list_runs must still forward the same
+    filter_json/sort_by used to mint that token. KFP binds a page_token to the
+    exact criteria used to generate it and rejects a continuation call that omits
+    them with a 400 ("page token does not match the supplied sort by and/or
+    filtering criteria").
+    """
+    filter_json = (
+        '{"predicates": [{"key": "created_at", "op": 5, '
+        '"timestamp_value": "2026-08-01T00:00:00Z"}]}'
+    )
+    list_runs_mock = unittest.mock.MagicMock(return_value=(["run-2"], None))
+    monkeypatch.setattr(client, "_list_runs", list_runs_mock)
+
+    list(
+        client.list_runs(
+            page_token="page2_token",
+            sort_by="created_at desc",
+            filter_json=filter_json,
+        )
+    )
+
+    list_runs_mock.assert_called_once()
+    assert list_runs_mock.call_args.kwargs["sort_by"] == "created_at desc"
+    assert list_runs_mock.call_args.kwargs["filter_json"]
+    assert (
+        json.loads(list_runs_mock.call_args.kwargs["filter_json"])["predicates"]
+        == json.loads(filter_json)["predicates"]
+    )

@@ -499,11 +499,15 @@ class Client(
 
         if next_page_token:
             # If the user provided a page token, they are doing pagination manually.
+            # KFP binds a page_token to the exact sort_by/filter used to mint it, so both
+            # must be forwarded unchanged on this call or KFP rejects the token as mismatched.
             page_runs, next_page_token = self._list_runs(
                 page_token=next_page_token,
                 page_size=page_size,
+                sort_by=sort_by,
                 namespace=namespace,
                 experiment_id=single_experiment_id,
+                filter_json=filter_json,
             )
             yield page_runs, next_page_token
             return
